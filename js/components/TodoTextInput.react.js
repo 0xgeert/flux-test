@@ -31,6 +31,12 @@ var TodoTextInput = React.createClass({
     value: ReactPropTypes.string
   },
 
+  /**
+   * Initial state of the component is defaulted to prop. 
+   * Remember that component state should be minimized and is only useful for temporary
+   * data. All other stuff should go into properties
+   * @return {[type]} [description]
+   */
   getInitialState: function() {
     return {
       value: this.props.value || ''
