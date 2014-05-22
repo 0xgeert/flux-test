@@ -17,7 +17,8 @@
  */
 
 var stores = {
-	todo: require('./stores/TodoStore')
+	todo: require('./stores/TodoStore'),
+	test: require('./stores/TestStore'),
 };
 
 var flux = require("./flux");

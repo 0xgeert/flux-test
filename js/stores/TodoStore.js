@@ -16,11 +16,18 @@
  * TodoStore
  */
 
+var _ = require("lodash");
+
+var Promise = require('es6-promise').Promise;
+
 var merge = require('react/lib/merge');
 
 var AbstractStore = require('./AbstractStore');
 
 var TodoConstants = require('../constants/TodoConstants');
+
+
+var flux = require("../flux");
 
 var _todos = {};
 
@@ -109,16 +116,26 @@ var TodoStore = merge(AbstractStore, {
   },
 
   callbackFN: function(payload) {
+
+    var that = this;
+
     var action = payload.action;
     var text;
 
     switch(action.actionType) {
       case TodoConstants.TODO_CREATE:
-        text = action.text.trim();
-        if (text !== '') {
-          create(text);
-        }
-        break;
+
+        var promise = that.waitFor([flux.stores.test.dispatchIndex], function(promiseResult) {
+          text = action.text.trim();
+          if (text !== '') {
+            create(text);
+          }
+
+          TodoStore.emitChange();
+          promise.resolve();
+        });
+
+        return promise;
 
       case TodoConstants.TODO_TOGGLE_COMPLETE_ALL:
         if (TodoStore.areAllComplete()) {
@@ -160,10 +177,11 @@ var TodoStore = merge(AbstractStore, {
     // code less repetitive by putting it here.  We need the default case,
     // however, to make sure this only gets called after one of the cases above.
     TodoStore.emitChange();
+    return true;
 
-    return true; // No errors.  Needed by promise in Dispatcher.
   }
 });
 
+_.bindAll(TodoStore);
 
 module.exports = TodoStore;

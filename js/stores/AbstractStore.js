@@ -3,7 +3,11 @@
 /**
  *
  * GeneralStore
+ * Subclass needs to implement: 
+ * - callbackFN
+ * - CHANGE_EVENT
  *
+ * Sets 
  */
 
 var AppDispatcher = require('../dispatcher/AppDispatcher');
@@ -20,9 +24,14 @@ var AbstractStore = merge(EventEmitter.prototype, {
     if(this.CHANGE_EVENT === undefined){
       throw new Error("Store should have 'CHANGE_EVENT'  defined");
     }
-    AppDispatcher.register(this.callbackFN);
+
+    this.waitFor = AppDispatcher.waitFor;
+    this.dispatchIndex = AppDispatcher.register(this.callbackFN);
   },
 
+  // dispatchIndex set by index
+  //dispatchIndex: FN
+  
    /**
    * @param {function} callback
    */
