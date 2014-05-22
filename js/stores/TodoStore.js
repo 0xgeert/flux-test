@@ -16,7 +16,7 @@
  * TodoStore
  */
 
-var GeneralStore = require('./GeneralStore');
+var AbstractStore = require('./AbstractStore');
 
 var TodoConstants = require('../constants/TodoConstants');
 var merge = require('react/lib/merge');
@@ -81,7 +81,7 @@ function destroyCompleted() {
   }
 }
 
-var TodoStore = merge(GeneralStore, {
+var TodoStore = merge(AbstractStore, {
 
   CHANGE_EVENT:'change',
 
