@@ -24,36 +24,27 @@
 var Footer = require('./Footer.react');
 var Header = require('./Header.react');
 var MainSection = require('./MainSection.react');
+
 var React = require('react');
 
-// var TodoStore = require('../stores/TodoStore');
-
-var flux = require("../flux");
-
-var TodoStore = flux.stores.todo;
-
-/**
- * Retrieve the current TODO data from the TodoStore
- */
-function getTodoState() {
-  return {
-    allTodos: TodoStore.getAll(),
-    areAllComplete: TodoStore.areAllComplete()
-  };
-}
+var TodoStore = require("../flux").stores.todo;
 
 var TodoApp = React.createClass({
 
-  getInitialState: function() {
-    return getTodoState();
-  },
+  mixins: [require("../componentMixins/SimpleChangeControllerView")],
 
-  componentDidMount: function() {
-    TodoStore.addChangeListener(this._onChange);
-  },
+  stores: [
+    TodoStore
+  ],
 
-  componentWillUnmount: function() {
-    TodoStore.removeChangeListener(this._onChange);
+  /**
+   * Retrieve the current TODO data from the TodoStore
+   */
+  getStoreState: function(){
+    return {
+      allTodos: TodoStore.getAll(),
+      areAllComplete: TodoStore.areAllComplete()
+    }
   },
 
   /**
@@ -70,15 +61,7 @@ var TodoApp = React.createClass({
         <Footer allTodos={this.state.allTodos} />
       </div>
   	);
-  },
-
-  /**
-   * Event handler for 'change' events coming from the TodoStore
-   */
-  _onChange: function() {
-    this.setState(getTodoState());
   }
-
 });
 
 module.exports = TodoApp;
