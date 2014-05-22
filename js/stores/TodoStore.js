@@ -16,10 +16,11 @@
  * TodoStore
  */
 
+var merge = require('react/lib/merge');
+
 var AbstractStore = require('./AbstractStore');
 
 var TodoConstants = require('../constants/TodoConstants');
-var merge = require('react/lib/merge');
 
 var _todos = {};
 
