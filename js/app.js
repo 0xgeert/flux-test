@@ -20,6 +20,15 @@ var React = require('react');
 
 var TodoApp = require('./components/TodoApp.react');
 
+var stores = {
+	todo: require('./stores/TodoStore')
+};
+
+var flux = require("./flux");
+flux.init({
+	stores: stores
+});
+
 React.renderComponent(
   <TodoApp />,
   document.getElementById('todoapp')

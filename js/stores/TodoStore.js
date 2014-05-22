@@ -17,7 +17,9 @@
  */
 
 var AppDispatcher = require('../dispatcher/AppDispatcher');
-var EventEmitter = require('events').EventEmitter;
+
+var GeneralStore = require('./GeneralStore');
+
 var TodoConstants = require('../constants/TodoConstants');
 var merge = require('react/lib/merge');
 
@@ -83,8 +85,7 @@ function destroyCompleted() {
   }
 }
 
-var TodoStore = merge(EventEmitter.prototype, {
-  
+var TodoStore = merge(GeneralStore, {
   /**
    * Tests whether all the remaining TODO items are marked as completed.
    * @return {booleam}
@@ -123,64 +124,64 @@ var TodoStore = merge(EventEmitter.prototype, {
    */
   removeChangeListener: function(callback) {
     this.removeListener(CHANGE_EVENT, callback);
+  },
+
+  callbackFN: function(payload) {
+    var action = payload.action;
+    var text;
+
+    switch(action.actionType) {
+      case TodoConstants.TODO_CREATE:
+        text = action.text.trim();
+        if (text !== '') {
+          create(text);
+        }
+        break;
+
+      case TodoConstants.TODO_TOGGLE_COMPLETE_ALL:
+        if (TodoStore.areAllComplete()) {
+          updateAll({complete: false});
+        } else {
+          updateAll({complete: true});
+        }
+        break;
+
+      case TodoConstants.TODO_UNDO_COMPLETE:
+        update(action.id, {complete: false});
+        break;
+
+      case TodoConstants.TODO_COMPLETE:
+        update(action.id, {complete: true});
+        break;
+
+      case TodoConstants.TODO_UPDATE_TEXT:
+        text = action.text.trim();
+        if (text !== '') {
+          update(action.id, {text: text});
+        }
+        break;
+
+      case TodoConstants.TODO_DESTROY:
+        destroy(action.id);
+        break;
+
+      case TodoConstants.TODO_DESTROY_COMPLETED:
+        destroyCompleted();
+        break;
+
+      default:
+        return true;
+    }
+
+    // This often goes in each case that should trigger a UI change. This store
+    // needs to trigger a UI change after every view action, so we can make the
+    // code less repetitive by putting it here.  We need the default case,
+    // however, to make sure this only gets called after one of the cases above.
+    TodoStore.emitChange();
+
+    return true; // No errors.  Needed by promise in Dispatcher.
   }
 });
 
-// Register to handle all updates
-AppDispatcher.register(function(payload) {
-  var action = payload.action;
-  var text;
-
-  switch(action.actionType) {
-    case TodoConstants.TODO_CREATE:
-      text = action.text.trim();
-      if (text !== '') {
-        create(text);
-      }
-      break;
-
-    case TodoConstants.TODO_TOGGLE_COMPLETE_ALL:
-      if (TodoStore.areAllComplete()) {
-        updateAll({complete: false});
-      } else {
-        updateAll({complete: true});
-      }
-      break;
-
-    case TodoConstants.TODO_UNDO_COMPLETE:
-      update(action.id, {complete: false});
-      break;
-
-    case TodoConstants.TODO_COMPLETE:
-      update(action.id, {complete: true});
-      break;
-
-    case TodoConstants.TODO_UPDATE_TEXT:
-      text = action.text.trim();
-      if (text !== '') {
-        update(action.id, {text: text});
-      }
-      break;
-
-    case TodoConstants.TODO_DESTROY:
-      destroy(action.id);
-      break;
-
-    case TodoConstants.TODO_DESTROY_COMPLETED:
-      destroyCompleted();
-      break;
-
-    default:
-      return true;
-  }
-
-  // This often goes in each case that should trigger a UI change. This store
-  // needs to trigger a UI change after every view action, so we can make the
-  // code less repetitive by putting it here.  We need the default case,
-  // however, to make sure this only gets called after one of the cases above.
-  TodoStore.emitChange();
-
-  return true; // No errors.  Needed by promise in Dispatcher.
-})
 
 module.exports = TodoStore;
