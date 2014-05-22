@@ -8,7 +8,7 @@
  *
  * - A function `getStoreState` is needed on the Controller view
  * - A prop `stores` (single obj or array) is needed on the Controller view
- * - A function `_noChange` is  needed on the Controller view
+ * - A function `_onChange` is  needed on the Controller view
  *
  * - This `getStoreState` is called on `getInitialState`
  * - `getStoreState` may contain properties from every store in `this.stores`
