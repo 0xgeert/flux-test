@@ -93,6 +93,8 @@ var TodoStore = merge(AbstractStore, {
 
   CHANGE_EVENT:'change',
 
+  constants: TodoConstants,
+
   /**
    * Tests whether all the remaining TODO items are marked as completed.
    * @return {booleam}
@@ -115,70 +117,85 @@ var TodoStore = merge(AbstractStore, {
     return _todos;
   },
 
-  callbackFN: function(payload) {
+  //declarative actions. 
+  //These are checked to exist (both the keys as the values)
+  //values be also be of format function
+  //or may be an object which in turn must contain a `fn` property
+  //which must be a string or a function
+  //
+  //The object notation allows for more elaborate things to be declared
+  //such as async and optimistic operation.
+  actions: {
+    "TODO_CREATE": "onTodoCreate",
+    "TODO_TOGGLE_COMPLETE_ALL": "onTodoToggleCompleteAll",
+    "TODO_UNDO_COMPLETE": "onTodoUndoComplete",
+    "TODO_COMPLETE": "onTodoComplete",
+    "TODO_UPDATE_TEXT": "onTodoUpdateText",
+    "TODO_DESTROY": "onTodoDestroy",
+    "TODO_DESTROY_COMPLETED": "onTodoDestroyCompleted"
+  },
 
-    var that = this;
-
-    var action = payload.action;
-    var text;
-
-    switch(action.actionType) {
-      case TodoConstants.TODO_CREATE:
-
-        var promise = that.waitFor([flux.stores.test.dispatchIndex], function(promiseResult) {
-          text = action.text.trim();
-          if (text !== '') {
-            create(text);
-          }
-
-          TodoStore.emitChange();
-          promise.resolve();
-        });
-
-        return promise;
-
-      case TodoConstants.TODO_TOGGLE_COMPLETE_ALL:
-        if (TodoStore.areAllComplete()) {
-          updateAll({complete: false});
-        } else {
-          updateAll({complete: true});
-        }
-        break;
-
-      case TodoConstants.TODO_UNDO_COMPLETE:
-        update(action.id, {complete: false});
-        break;
-
-      case TodoConstants.TODO_COMPLETE:
-        update(action.id, {complete: true});
-        break;
-
-      case TodoConstants.TODO_UPDATE_TEXT:
-        text = action.text.trim();
-        if (text !== '') {
-          update(action.id, {text: text});
-        }
-        break;
-
-      case TodoConstants.TODO_DESTROY:
-        destroy(action.id);
-        break;
-
-      case TodoConstants.TODO_DESTROY_COMPLETED:
-        destroyCompleted();
-        break;
-
-      default:
-        return;
+  ////////////////////
+  // Action methods //
+  ////////////////////
+  
+  onTodoCreate: function(action){
+    var text = action.text.trim();
+    if (text !== '') {
+      create(text);
     }
-
-    // This often goes in each case that should trigger a UI change. This store
-    // needs to trigger a UI change after every view action, so we can make the
-    // code less repetitive by putting it here.  We need the default case,
-    // however, to make sure this only gets called after one of the cases above.
     TodoStore.emitChange();
+  },
 
-  }
+  onTodoToggleCompleteAll: function(action){
+    if (TodoStore.areAllComplete()) {
+      updateAll({complete: false});
+    } else {
+      updateAll({complete: true});
+
+    }
+    TodoStore.emitChange();
+  },
+
+  onTodoUndoComplete: function(action){
+    update(action.id, {complete: false});
+    TodoStore.emitChange();
+  },
+
+  onTodoComplete: function(action){
+    update(action.id, {complete: true});
+    TodoStore.emitChange();
+  },
+
+  onTodoUpdateText: function(action){
+    text = action.text.trim();
+    if (text !== '') {
+      update(action.id, {text: text});
+    }
+    TodoStore.emitChange();
+  },
+
+  onTodoDestroy: function(action){
+    destroy(action.id);
+    TodoStore.emitChange();
+  },
+
+  onTodoDestroyCompleted: function(action){
+    destroyCompleted();
+    TodoStore.emitChange();
+  },
+
+  // //TODO: success and fail should be added to
+  // success: function(promise){
+  //   TodoStore.emitChange();
+  //   //return promise.resolve(); //add later 
+  // },
+
+  // fail: function(promise, err){
+  //   console.log(err);
+  //   return promise.reject(err);
+  // },
+  // 
 });
 
 _.bindAll(TodoStore);
