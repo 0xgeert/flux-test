@@ -16,8 +16,6 @@
  * TodoStore
  */
 
-var AppDispatcher = require('../dispatcher/AppDispatcher');
-
 var GeneralStore = require('./GeneralStore');
 
 var TodoConstants = require('../constants/TodoConstants');
