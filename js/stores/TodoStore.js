@@ -21,8 +21,6 @@ var GeneralStore = require('./GeneralStore');
 var TodoConstants = require('../constants/TodoConstants');
 var merge = require('react/lib/merge');
 
-var CHANGE_EVENT = 'change';
-
 var _todos = {};
 
 /**
@@ -84,6 +82,9 @@ function destroyCompleted() {
 }
 
 var TodoStore = merge(GeneralStore, {
+
+  CHANGE_EVENT:'change',
+
   /**
    * Tests whether all the remaining TODO items are marked as completed.
    * @return {booleam}
@@ -104,24 +105,6 @@ var TodoStore = merge(GeneralStore, {
    */
   getAll: function() {
     return _todos;
-  },
-
-  emitChange: function() {
-    this.emit(CHANGE_EVENT);
-  },
-
-  /**
-   * @param {function} callback
-   */
-  addChangeListener: function(callback) {
-    this.on(CHANGE_EVENT, callback);
-  },
-
-  /**
-   * @param {function} callback
-   */
-  removeChangeListener: function(callback) {
-    this.removeListener(CHANGE_EVENT, callback);
   },
 
   callbackFN: function(payload) {
