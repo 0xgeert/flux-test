@@ -169,7 +169,7 @@ var TodoStore = merge(AbstractStore, {
         break;
 
       default:
-        return true;
+        return;
     }
 
     // This often goes in each case that should trigger a UI change. This store
@@ -177,7 +177,6 @@ var TodoStore = merge(AbstractStore, {
     // code less repetitive by putting it here.  We need the default case,
     // however, to make sure this only gets called after one of the cases above.
     TodoStore.emitChange();
-    return true;
 
   }
 });
