@@ -40,7 +40,7 @@ var AbstractStore = merge(EventEmitter.prototype, {
     //create 'callbackFN' from this.actions which is defined declaratively
     if (this.actions !== undefined) {
 
-      var map = this.createMapFromActionDeclaration(this.actions);
+      var map = createMapFromActionDeclaration(this);
 
       this.callbackFN = function(payload) {
         var action = payload.action;
@@ -75,64 +75,63 @@ var AbstractStore = merge(EventEmitter.prototype, {
     this.emit(this.CHANGE_EVENT);
   },
 
-  createMapFromActionDeclaration: function() {
-
-    var that = this;
-
-    //create map of actions to handlers. 
-    //throw if action and/or handler is not found
-    var map = {};
-    _.each(this.actions, function(obj, k) {
-      var lookupKey = that.constants[k];
-      if (lookupKey === undefined) {
-        throw new Error("action not found in store: " + k);
-      }
-      var fn;
-      if (_.isString(obj)) {
-        fn = that[obj];
-        if (!_.isFunction(fn)) {
-          throw new Error("actionHandler by reference not found in store with ref: " + obj);
-        }
-        obj = {
-          fn: fn
-        };
-      } else if (_.isFunction(obj)) {
-        obj = {
-          fn: obj
-        };
-      }
-
-      //Should be format: {
-      //  fn: fn
-      //}
-      //
-      if (!_.isObject(obj)) {
-        throw new Error("config error for actionHandler in store: " + k)
-      }
-
-      //format: {
-      //  fn: string
-      //}
-      //
-      //=> 
-      //{
-      //  fn: function
-      //}
-      if (_.isString(obj.fn)) {
-        fn = that[obj.fn];
-        if (!_.isFunction(fn)) {
-          throw new Error("actionHandler by reference not found in store with ref: " + obj.fn);
-        }
-        obj.fn = fn;
-      }
-
-      map[lookupKey] = obj;
-    });
-    return map;
-  },
-
-
 
 });
+
+function createMapFromActionDeclaration(store) {
+
+  var that = store;
+
+  //create map of actions to handlers. 
+  //throw if action and/or handler is not found
+  var map = {};
+  _.each(store.actions, function(obj, k) {
+    var lookupKey = that.constants[k];
+    if (lookupKey === undefined) {
+      throw new Error("action not found in store: " + k);
+    }
+    var fn;
+    if (_.isString(obj)) {
+      fn = that[obj];
+      if (!_.isFunction(fn)) {
+        throw new Error("actionHandler by reference not found in store with ref: " + obj);
+      }
+      obj = {
+        fn: fn
+      };
+    } else if (_.isFunction(obj)) {
+      obj = {
+        fn: obj
+      };
+    }
+
+    //Should be format: {
+    //  fn: fn
+    //}
+    //
+    if (!_.isObject(obj)) {
+      throw new Error("config error for actionHandler in store: " + k)
+    }
+
+    //format: {
+    //  fn: string
+    //}
+    //
+    //transform to => 
+    //{
+    //  fn: function
+    //}
+    if (_.isString(obj.fn)) {
+      fn = that[obj.fn];
+      if (!_.isFunction(fn)) {
+        throw new Error("actionHandler by reference not found in store with ref: " + obj.fn);
+      }
+      obj.fn = fn;
+    }
+
+    map[lookupKey] = obj;
+  });
+  return map;
+}
 
 module.exports = AbstractStore;
