@@ -10,6 +10,8 @@ var TestStore = merge(AbstractStore, {
 
   CHANGE_EVENT:'change',
 
+  name: "test",
+  
   callbackFN: function(payload) {
     var action = payload.action;
 
@@ -19,8 +21,9 @@ var TestStore = merge(AbstractStore, {
       switch(action.actionType) {
         default:
           setTimeout(function(){
+            console.log("Asdasdas");
             resolve();
-          },10);
+          },1000);
       }
     });
 

@@ -18,16 +18,11 @@
 
 var _ = require("lodash");
 
-var Promise = require('es6-promise').Promise;
-
 var merge = require('react/lib/merge');
 
 var AbstractStore = require('./AbstractStore');
 
 var TodoConstants = require('../constants/TodoConstants');
-
-
-var flux = require("../flux");
 
 var _todos = {};
 
@@ -93,6 +88,8 @@ var TodoStore = merge(AbstractStore, {
 
   CHANGE_EVENT:'change',
 
+  name: "todo",
+  
   constants: TodoConstants,
 
   /**
@@ -126,7 +123,10 @@ var TodoStore = merge(AbstractStore, {
   //The object notation allows for more elaborate things to be declared
   //such as async and optimistic operation.
   actions: {
-    "TODO_CREATE": "onTodoCreate",
+    "TODO_CREATE": {
+      fn: "onTodoCreate",
+      waitFor: "test"
+    },
     "TODO_TOGGLE_COMPLETE_ALL": "onTodoToggleCompleteAll",
     "TODO_UNDO_COMPLETE": "onTodoUndoComplete",
     "TODO_COMPLETE": "onTodoComplete",
@@ -139,7 +139,8 @@ var TodoStore = merge(AbstractStore, {
   // Action methods //
   ////////////////////
   
-  onTodoCreate: function(action){
+  onTodoCreate: function(action, bla){
+    console.log(action);
     var text = action.text.trim();
     if (text !== '') {
       create(text);

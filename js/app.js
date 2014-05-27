@@ -16,6 +16,7 @@
  * @jsx React.DOM
  */
 
+//NOTE: require them to be in lowercase
 var stores = {
 	todo: require('./stores/TodoStore'),
 	test: require('./stores/TestStore'),

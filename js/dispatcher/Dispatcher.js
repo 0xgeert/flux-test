@@ -90,7 +90,7 @@ Dispatcher.prototype = merge(Dispatcher.prototype, {
    *       switch(payload.action.actionType) {
    *
    *         case MyConstants.FOO_ACTION:
-   *           Dispatcher.waitFor([StoreA.dispatchIndex], function() {
+   *           Dispatcher.waitFor([StoreA], function() {
    *             // Do stuff only after StoreA's callback returns.
    *           });
    *       }
@@ -101,11 +101,11 @@ Dispatcher.prototype = merge(Dispatcher.prototype, {
    * StoreB, a circular dependency will occur, but no error will be thrown.
    * A more robust Dispatcher would issue a warning in this scenario.
    */
-  waitFor: function(/*array*/ promiseIndexes, /*function*/ callback) {
-    var selectedPromises = promiseIndexes.map(function(index) {
-      return _promises[index];
+  waitFor: function(/*array*/ storeIndexes, /*function*/ callback, errCallback) {
+    var selectedPromises = storeIndexes.map(function(store) {
+      return _promises[store.dispatchIndex];
     });
-    return Promise.all(selectedPromises).then(callback);
+    return Promise.all(selectedPromises).then(callback).catch(errCallback);
   }
 
 });

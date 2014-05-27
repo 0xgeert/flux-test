@@ -18,9 +18,18 @@ var EventEmitter = require('events').EventEmitter;
 
 var merge = require('react/lib/merge');
 
+var Promise = require('es6-promise').Promise;
+
+var flux = require("../flux");
+
 
 var AbstractStore = merge(EventEmitter.prototype, {
   init: function() {
+
+    if (this.name === undefined) {
+      throw new Error("Store should have 'name'  defined");
+    }
+
     if (this.callbackFN === undefined && this.actions === undefined) {
       throw new Error("Store should have 'callbackFN' or 'actions'  defined");
     }
@@ -128,6 +137,70 @@ function createMapFromActionDeclaration(store) {
       }
       obj.fn = fn;
     }
+
+    // wrap FN in promise
+    obj.fn = _.wrap(obj.fn, function(fn, action){
+      console.log("jaja");
+      return new Promise(function(resolve, reject) {
+        var result = fn(action, resolve, reject);
+
+        //sync method return directly. 
+        //if return assume success
+        //otherwise throw
+        if(!obj.async){
+          resolve(result);
+        }else{ //async
+          //TODO: if optimistic -> send some optimistic update event
+        }
+      });
+    });
+
+    //if declaratively defined to waitFor stores, config that here
+    if(obj.waitFor){
+      //
+      if(!_.isArray(obj.waitFor)){
+        obj.waitFor = [obj.waitFor];
+
+      }
+
+      //lookup 'store' by reference and store said 'store' instead 
+      obj.waitFor = _.map(obj.waitFor, function(storeRef){
+        var storeToRef = flux.stores[storeRef.toLowerCase()];
+        if(storeToRef === undefined){
+          throw new Error("store defined to 'waitFor' is undefined (store to wait for, store) : "  + storeRef.toLowerCase() + " , "  + store.name);
+        }
+        return storeToRef;
+      });
+
+      //TODO: error callback
+      obj.fn = _.wrap(obj.fn, function(fn){
+        console.log("asdsad");
+        return AppDispatcher.waitFor(obj.waitFor, fn);
+      });
+    }
+
+
+
+
+    // if(!obj.async){
+
+    //   // var jsonPromise = new Promise(function(resolve, reject) {
+    //   //   throw new Error("he moeder");
+    //   // });
+    //   // console.log("after");
+    //   // jsonPromise.then(function(data) {
+    //   //   // This never happens:
+    //   //   console.log("It worked!", data);
+    //   // }).catch(function(err) {
+    //   //   // Instead, this happens:
+    //   //   console.log("It failed!", err);
+    //   // });
+
+
+
+    // }else{
+    //   throw new Error("async not implemented yet: #11");
+    // }
 
     map[lookupKey] = obj;
   });
