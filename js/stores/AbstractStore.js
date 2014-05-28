@@ -12,6 +12,8 @@
 
 var _ = require("lodash");
 
+var utils = require("../utils");
+
 var AppDispatcher = require('../dispatcher/AppDispatcher');
 
 var EventEmitter = require('events').EventEmitter;
@@ -24,6 +26,24 @@ var flux = require("../flux");
 
 
 var AbstractStore = merge(EventEmitter.prototype, {
+
+  //default success callback for stores implementing declarative 'actions'
+  successCb: function(){
+    this.emitChange();
+  },
+
+  //default optimistic callback for stores implementing declarative 'actions'
+  optimisticCb: function(){
+    console.log("optimistic change send");
+    this.emitChange();
+  },
+
+  //default failure callback for stores implementing declarative 'actions'
+  failCb: function(err){
+    console.log(err);
+    throw new err;
+  },
+
   init: function() {
 
     if (this.name === undefined) {
@@ -31,19 +51,34 @@ var AbstractStore = merge(EventEmitter.prototype, {
     }
 
     if (this.callbackFN === undefined && this.actions === undefined) {
-      throw new Error("Store should have 'callbackFN' or 'actions'  defined");
+      throw new Error("Store should have 'callbackFN' or 'actions'  defined: " + this.name);
     }
 
     if (this.callbackFN !== undefined && this.actions !== undefined) {
-      throw new Error("Store cannot have both 'callbackFN' and 'actions'  defined");
+      throw new Error("Store cannot have both 'callbackFN' and 'actions'  defined: " + this.name);
     }
 
-    if (this.actions !== undefined && this.constants === undefined) {
-      throw new Error("Store should have 'constants' defined if 'actions' defined");
-    }
+    if(this.actions !== undefined ){
 
+      if (this.constants === undefined) {
+        throw new Error("Store should have 'constants' defined if 'actions' defined: " + this.name);
+      }
+
+      if (this.successCb === undefined) {
+        throw new Error("Store should have 'successCb' defined if 'actions' defined: " + this.name);
+      }
+
+      if (this.failCb === undefined) {
+        throw new Error("Store should have 'failCb' defined if 'actions' defined: " + this.name);
+      }
+
+      if (this.optimisticCb === undefined) {
+        throw new Error("Store should have 'optimisticCb' defined if 'actions' defined: " + this.name);
+      }
+    }
+    
     if (this.CHANGE_EVENT === undefined) {
-      throw new Error("Store should have 'CHANGE_EVENT'  defined");
+      throw new Error("Store should have 'CHANGE_EVENT'  defined: " + this.name);
     }
 
     //create 'callbackFN' from this.actions which is defined declaratively
@@ -54,7 +89,7 @@ var AbstractStore = merge(EventEmitter.prototype, {
       this.callbackFN = function(payload) {
         var action = payload.action;
         if (map[action.actionType] !== undefined) {
-          map[action.actionType].fn.call(this, action);
+          return map[action.actionType].fn.call(this, action);
         }
       };
     }
@@ -99,8 +134,10 @@ function createMapFromActionDeclaration(store) {
     if (lookupKey === undefined) {
       throw new Error("action not found in store: " + k);
     }
-    var fn;
+    var fn,
+      ref;
     if (_.isString(obj)) {
+      ref = obj;
       fn = that[obj];
       if (!_.isFunction(fn)) {
         throw new Error("actionHandler by reference not found in store with ref: " + obj);
@@ -131,6 +168,7 @@ function createMapFromActionDeclaration(store) {
     //  fn: function
     //}
     if (_.isString(obj.fn)) {
+      ref = obj.fn;
       fn = that[obj.fn];
       if (!_.isFunction(fn)) {
         throw new Error("actionHandler by reference not found in store with ref: " + obj.fn);
@@ -138,29 +176,47 @@ function createMapFromActionDeclaration(store) {
       obj.fn = fn;
     }
 
-    // wrap FN in promise
-    obj.fn = _.wrap(obj.fn, function(fn, action){
-      console.log("jaja");
-      return new Promise(function(resolve, reject) {
-        var result = fn(action, resolve, reject);
+    //test function signature has 3 parameters (action, resolve, reject) when async
+    //and 1 parameter (action) when not async
+    //NOTE: these paramters can't be checked by name bc minification
+    var count = utils.getFunctionSignature(obj.fn).length;
+    if(obj.async && count !== 3){
+      throw new Error("an async handler should have 3 params (action , resolve, reject). (store, methodname, param count) :  "+ 
+        store.name + ", " + ref ? ref : "inline method" + ", " + count);
+    }else if(!obj.async && count !== 1){
+      throw new Error("a sync handler should have 1 params (action). (store, methodname, param count) :  "+ 
+        store.name + ", " + (ref ? ref : "inline method") + ", " + count);
+    }
 
-        //sync method return directly. 
-        //if return assume success
-        //otherwise throw
+    // wrap FN in promise. 
+    // This unifies sync and async handlers. 
+    // sync handlers are succesfull when they return. In that case resolve() is called. 
+    // A sync handler needs to fail by throwing.
+    // 
+    // TODO: get a clear architecture picture in which case a handler needs to fail/ reject vs when an unwanted but not unexpected outcome occurs
+    // (in which case you perhaps want to resolve?)
+    obj.fn = _.wrap(obj.fn, function(fn, action){
+      return new Promise(function(resolve, reject) {
+        fn(action, resolve, reject);
+
+        //sync method returns directly. 
+        //error is communicated by throwing (which in turn is caught by errorCb)
         if(!obj.async){
-          resolve(result);
-        }else{ //async
-          //TODO: if optimistic -> send some optimistic update event
+          resolve();
+        }else if(obj.optimistic){ //async and optimistic
+          that.optimisticCb();
         }
       });
     });
 
-    //if declaratively defined to waitFor stores, config that here
+    /////////////////////////////////////////////////////////////////
+    //if declaratively defined to waitFor stores, config that here //
+    /////////////////////////////////////////////////////////////////
     if(obj.waitFor){
-      //
+
+      //make sure `waitFor`is array
       if(!_.isArray(obj.waitFor)){
         obj.waitFor = [obj.waitFor];
-
       }
 
       //lookup 'store' by reference and store said 'store' instead 
@@ -172,39 +228,31 @@ function createMapFromActionDeclaration(store) {
         return storeToRef;
       });
 
-      //TODO: error callback
+      // wrap obj.fn  -that returns promise when called - 
+      // with WaitFor functionality. 
+      // The result, again, is a Promise.
       obj.fn = _.wrap(obj.fn, function(fn){
-        console.log("asdsad");
         return AppDispatcher.waitFor(obj.waitFor, fn);
       });
     }
 
-
-
-
-    // if(!obj.async){
-
-    //   // var jsonPromise = new Promise(function(resolve, reject) {
-    //   //   throw new Error("he moeder");
-    //   // });
-    //   // console.log("after");
-    //   // jsonPromise.then(function(data) {
-    //   //   // This never happens:
-    //   //   console.log("It worked!", data);
-    //   // }).catch(function(err) {
-    //   //   // Instead, this happens:
-    //   //   console.log("It failed!", err);
-    //   // });
-
-
-
-    // }else{
-    //   throw new Error("async not implemented yet: #11");
-    // }
+    //wrap obj.fn  -that returns promise when called - with 
+    //success and failure callbacks. 
+    //These *need* to be defined by every store implementing 'actions'. 
+    //The AbstractStore implements some sensible defaults: 
+    // - successcallback: 
+    //   - calls emit Change
+    //   
+    // - Failure callback: 
+    //   - logs error
+    obj.fn = _.wrap(obj.fn, function(fn, action){
+      return fn(action).then(that.successCb).catch(that.failCb);
+    });
 
     map[lookupKey] = obj;
   });
   return map;
 }
+
 
 module.exports = AbstractStore;

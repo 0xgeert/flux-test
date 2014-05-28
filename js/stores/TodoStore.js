@@ -139,13 +139,12 @@ var TodoStore = merge(AbstractStore, {
   // Action methods //
   ////////////////////
   
-  onTodoCreate: function(action, bla){
-    console.log(action);
+  onTodoCreate: function(action){
+    throw new Error("asdasd");
     var text = action.text.trim();
     if (text !== '') {
       create(text);
     }
-    TodoStore.emitChange();
   },
 
   onTodoToggleCompleteAll: function(action){
@@ -153,19 +152,15 @@ var TodoStore = merge(AbstractStore, {
       updateAll({complete: false});
     } else {
       updateAll({complete: true});
-
     }
-    TodoStore.emitChange();
   },
 
   onTodoUndoComplete: function(action){
     update(action.id, {complete: false});
-    TodoStore.emitChange();
   },
 
   onTodoComplete: function(action){
     update(action.id, {complete: true});
-    TodoStore.emitChange();
   },
 
   onTodoUpdateText: function(action){
@@ -173,30 +168,15 @@ var TodoStore = merge(AbstractStore, {
     if (text !== '') {
       update(action.id, {text: text});
     }
-    TodoStore.emitChange();
   },
 
   onTodoDestroy: function(action){
     destroy(action.id);
-    TodoStore.emitChange();
   },
 
   onTodoDestroyCompleted: function(action){
     destroyCompleted();
-    TodoStore.emitChange();
   },
-
-  // //TODO: success and fail should be added to
-  // success: function(promise){
-  //   TodoStore.emitChange();
-  //   //return promise.resolve(); //add later 
-  // },
-
-  // fail: function(promise, err){
-  //   console.log(err);
-  //   return promise.reject(err);
-  // },
-  // 
 });
 
 _.bindAll(TodoStore);

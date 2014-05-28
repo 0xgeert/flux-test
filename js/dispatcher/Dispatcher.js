@@ -27,6 +27,8 @@ var merge = require('react/lib/merge');
 var _callbacks = [];
 var _promises = [];
 
+var _busy = 0;
+
 var Dispatcher = function() {};
 Dispatcher.prototype = merge(Dispatcher.prototype, {
 
@@ -45,6 +47,11 @@ Dispatcher.prototype = merge(Dispatcher.prototype, {
    * @param  {object} payload The data from the action.
    */
   dispatch: function(payload) {
+
+    if(_busy){
+      throw new Error("dispatcher is currently busy processing an action");
+    }
+
     // First create array of promises for callbacks to reference.
     var _resolves = [];
     var _rejects = [];
@@ -54,14 +61,22 @@ Dispatcher.prototype = merge(Dispatcher.prototype, {
           _rejects[i] = reject;
         });
     });
+
     // Dispatch to callbacks and resolve/reject promises.
     _callbacks.forEach(function(callback, i) {
+
+      //incr busy counter
+      _busy++;
+
       // Callback can return an obj, to resolve, or a promise, to chain.
       // See waitFor() for why this might be useful.
       Promise.resolve(callback(payload)).then(function() {
         _resolves[i](payload);
-      }, function() {
+      }).catch(function() {
         _rejects[i](new Error('Dispatcher callback unsuccessful'));
+      }).then(function() {
+        //decr busy counter
+        _busy--;
       });
     });
     _promises = [];
@@ -101,11 +116,13 @@ Dispatcher.prototype = merge(Dispatcher.prototype, {
    * StoreB, a circular dependency will occur, but no error will be thrown.
    * A more robust Dispatcher would issue a warning in this scenario.
    */
-  waitFor: function(/*array*/ storeIndexes, /*function*/ callback, errCallback) {
-    var selectedPromises = storeIndexes.map(function(store) {
+  waitFor: function(/*array*/ stores, /*function*/ callback) {
+    var selectedPromises = stores.map(function(store) {
       return _promises[store.dispatchIndex];
     });
-    return Promise.all(selectedPromises).then(callback).catch(errCallback);
+    return Promise.all(selectedPromises).then(function(result){
+      return callback(result[0].action);
+    });
   }
 
 });
