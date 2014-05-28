@@ -36,6 +36,7 @@ var Flux = merge(EventEmitter.prototype, {
 });
 
 // Cycle detection in Direct Acyclic Graph
+// implements https://github.com/gebrits/flux-test/issues/13
 function detectCycleInStores(dag){
 	while(true){
 
