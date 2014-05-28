@@ -24,7 +24,10 @@ var AbstractStore = require('./AbstractStore');
 
 var TodoConstants = require('../constants/TodoConstants');
 
-var _todos = {};
+//var _todos = {};
+
+var PouchDB = require('pouchdb');
+var db = new PouchDB('todos');
 
 /**
  * Create a TODO item.
@@ -34,12 +37,18 @@ function create(text) {
   // Hand waving here -- not showing how this interacts with XHR or persistent
   // server-side storage.
   // Using the current timestamp in place of a real id.
-  var id = Date.now();
-  _todos[id] = {
-    id: id,
+  
+  var todo = {
+    _id: Date.now(),
     complete: false,
     text: text
   };
+
+  db.put(todo, function callback(err, result) {
+    if (!err) {
+      console.log('Successfully posted a todo!');
+    }
+  });
 }
 
 /**
@@ -49,6 +58,9 @@ function create(text) {
  *     updated.
  */
 function update(id, updates) {
+
+  db.put(todo);
+
   _todos[id] = merge(_todos[id], updates);
 }
 
@@ -125,59 +137,84 @@ var TodoStore = merge(AbstractStore, {
   actions: {
     "TODO_CREATE": {
       fn: "onTodoCreate",
-      waitFor: "test"
+      async: true
     },
-    "TODO_TOGGLE_COMPLETE_ALL": "onTodoToggleCompleteAll",
-    "TODO_UNDO_COMPLETE": "onTodoUndoComplete",
-    "TODO_COMPLETE": "onTodoComplete",
-    "TODO_UPDATE_TEXT": "onTodoUpdateText",
-    "TODO_DESTROY": "onTodoDestroy",
-    "TODO_DESTROY_COMPLETED": "onTodoDestroyCompleted"
+    "TODO_TOGGLE_COMPLETE_ALL":{
+      fn:  "onTodoToggleCompleteAll",
+      async: true
+    },
+    "TODO_UNDO_COMPLETE": {
+      fn: "onTodoUndoComplete",
+      async: true,
+    },
+    "TODO_COMPLETE": {
+      fn: "onTodoComplete",
+      async: true
+    },
+    "TODO_UPDATE_TEXT": {
+      fn: "onTodoUpdateText",
+      async: true
+    },
+    "TODO_DESTROY": {
+      fn: "onTodoDestroy",
+      async: true
+    },
+    "TODO_DESTROY_COMPLETED": {
+      fn: "onTodoDestroyCompleted",
+      async: true
+    }
   },
 
   ////////////////////
   // Action methods //
   ////////////////////
   
-  onTodoCreate: function(action){
+  onTodoCreate: function(action, resolve, reject){
     var text = action.text.trim();
     if (text !== '') {
       create(text);
     }
+    resolve();
   },
 
-  onTodoToggleCompleteAll: function(action){
+  onTodoToggleCompleteAll: function(action, resolve, reject){
     if (TodoStore.areAllComplete()) {
       updateAll({complete: false});
     } else {
       updateAll({complete: true});
     }
+    resolve();
   },
 
-  onTodoUndoComplete: function(action){
+  onTodoUndoComplete: function(action, resolve, reject){
     update(action.id, {complete: false});
+    resolve();
   },
 
-  onTodoComplete: function(action){
+  onTodoComplete: function(action, resolve, reject){
     update(action.id, {complete: true});
+    resolve();
   },
 
-  onTodoUpdateText: function(action){
+  onTodoUpdateText: function(action, resolve, reject){
     text = action.text.trim();
     if (text !== '') {
       update(action.id, {text: text});
     }
+    resolve();
   },
 
-  onTodoDestroy: function(action){
+  onTodoDestroy: function(action, resolve, reject){
     destroy(action.id);
+    resolve();
   },
 
-  onTodoDestroyCompleted: function(action){
+  onTodoDestroyCompleted: function(action, resolve, reject){
     destroyCompleted();
+    resolve();
   },
 });
 
-_.bindAll(TodoStore);
+_.bindAll(TodoStore,["successCb","optimisticCb","failCb","emitChange"]);
 
 module.exports = TodoStore;
