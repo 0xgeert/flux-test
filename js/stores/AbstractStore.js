@@ -82,9 +82,20 @@ var AbstractStore = merge(EventEmitter.prototype, {
     }
 
     //create 'callbackFN' from this.actions which is defined declaratively
+    var dag = [];
     if (this.actions !== undefined) {
 
       var map = createMapFromActionDeclaration(this);
+
+      //return an array of stores this store depends on. 
+      //This is used to calculate cycles in waitFor. 
+      dag = _.reduce(map, function(dag, obj){
+        return _.union(dag, _.pluck((obj.waitFor || []), "name"));
+      }, []);
+
+      if(dag.indexOf(this.name) > -1){
+        throw new Error("Store cannot depend on itself in `waitfor`: " + this.name);
+      }
 
       this.callbackFN = function(payload) {
         var action = payload.action;
@@ -96,6 +107,8 @@ var AbstractStore = merge(EventEmitter.prototype, {
 
     this.waitFor = AppDispatcher.waitFor;
     this.dispatchIndex = AppDispatcher.register(this.callbackFN);
+
+    return dag; 
   },
 
   // dispatchIndex set by index
