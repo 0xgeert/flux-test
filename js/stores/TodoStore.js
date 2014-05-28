@@ -28,12 +28,13 @@ var TodoConstants = require('../constants/TodoConstants');
 
 var PouchDB = require('pouchdb');
 var db = new PouchDB('todos');
+var remoteCouch = false;
 
 /**
  * Create a TODO item.
  * @param  {string} text The content of the TODO
  */
-function create(text) {
+function create(text, cb) {
   // Hand waving here -- not showing how this interacts with XHR or persistent
   // server-side storage.
   // Using the current timestamp in place of a real id.
@@ -44,11 +45,7 @@ function create(text) {
     text: text
   };
 
-  db.put(todo, function callback(err, result) {
-    if (!err) {
-      console.log('Successfully posted a todo!');
-    }
-  });
+  db.put(todo, cb);
 }
 
 /**
@@ -172,9 +169,13 @@ var TodoStore = merge(AbstractStore, {
   onTodoCreate: function(action, resolve, reject){
     var text = action.text.trim();
     if (text !== '') {
-      create(text);
+      create(text,function callback(err, result) {
+        if (err) return reject(err);
+        resolve(result);
+      });
+    }else{
+      resolve();
     }
-    resolve();
   },
 
   onTodoToggleCompleteAll: function(action, resolve, reject){
@@ -215,6 +216,8 @@ var TodoStore = merge(AbstractStore, {
   },
 });
 
+//NOTE: don't do bindAll for action methods (onX), since this 
+//fails inspection when testing for nr of params (async vs sync check)
 _.bindAll(TodoStore,["successCb","optimisticCb","failCb","emitChange"]);
 
 module.exports = TodoStore;
