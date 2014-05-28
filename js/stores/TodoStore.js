@@ -140,7 +140,6 @@ var TodoStore = merge(AbstractStore, {
   ////////////////////
   
   onTodoCreate: function(action){
-    throw new Error("asdasd");
     var text = action.text.trim();
     if (text !== '') {
       create(text);
