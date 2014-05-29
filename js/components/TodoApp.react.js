@@ -26,12 +26,16 @@ var Header = require('./Header.react');
 var MainSection = require('./MainSection.react');
 
 var React = require('react');
+var ReactAsync = require('react-async');
 
 var TodoStore = require("../flux").stores.todo;
 
 var TodoApp = React.createClass({
 
-  mixins: [require("../componentMixins/SimpleChangeControllerView")],
+  mixins: [
+    require("../componentMixins/SimpleChangeControllerView"),
+    ReactAsync.Mixin
+  ],
 
   stores: [
     TodoStore
@@ -40,11 +44,14 @@ var TodoApp = React.createClass({
   /**
    * Retrieve the current TODO data from the TodoStore
    */
-  getStoreState: function(){
-    return {
-      allTodos: TodoStore.getAll(),
-      areAllComplete: TodoStore.areAllComplete()
-    }
+  getStoreState: function(cb){
+    TodoStore.getAll(function(err, result){
+      if(err)return cb(err);
+      cb(undefined,{
+        allTodos: result,
+        areAllComplete: TodoStore.areAllComplete() //TODO: change implementation
+      });
+    });
   },
 
   /**

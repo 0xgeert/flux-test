@@ -47,7 +47,8 @@ Dispatcher.prototype = merge(Dispatcher.prototype, {
    * @param  {object} payload The data from the action.
    */
   dispatch: function(payload) {
-
+    console.log("##################################");
+    console.log(payload.action.actionType);
     if(_busy){
       throw new Error("dispatcher is currently busy processing an action");
     }
@@ -67,16 +68,21 @@ Dispatcher.prototype = merge(Dispatcher.prototype, {
 
       //incr busy counter
       _busy++;
+      console.log("increment to: " + _busy);
 
       // Callback can return an obj, to resolve, or a promise, to chain.
       // See waitFor() for why this might be useful.
       Promise.resolve(callback(payload)).then(function() {
         _resolves[i](payload);
-      }).catch(function() {
+      })["catch"](function(err) {
+        console.log("#####################");
+        console.log("dispatcher caught");
+        console.log(err);
         _rejects[i](new Error('Dispatcher callback unsuccessful'));
       }).then(function() {
         //decr busy counter
         _busy--;
+        console.log("decrement to: " + _busy);
       });
     });
     _promises = [];

@@ -31,6 +31,12 @@ var Footer = React.createClass({
    */
   render: function() {
     var allTodos = this.props.allTodos;
+
+    //need to check for non exist, since state is loaded async
+    if(!this.props.allTodos){
+      return <noscript />;
+    }
+
     var total = Object.keys(allTodos).length;
 
     if (total === 0) {

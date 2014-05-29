@@ -22,6 +22,8 @@ var merge = require('react/lib/merge');
 
 var AbstractStore = require('./AbstractStore');
 
+var Promise = require('es6-promise').Promise;
+
 var TodoConstants = require('../constants/TodoConstants');
 
 //var _todos = {};
@@ -34,18 +36,18 @@ var remoteCouch = false;
  * Create a TODO item.
  * @param  {string} text The content of the TODO
  */
-function create(text, cb) {
+function create(text) {
   // Hand waving here -- not showing how this interacts with XHR or persistent
   // server-side storage.
   // Using the current timestamp in place of a real id.
   
   var todo = {
-    _id: Date.now(),
+    _id: new Date().toString('T'), //time now in string
     complete: false,
     text: text
   };
 
-  db.put(todo, cb);
+  return db.put(todo);
 }
 
 /**
@@ -56,9 +58,15 @@ function create(text, cb) {
  */
 function update(id, updates) {
 
-  db.put(todo);
-
-  _todos[id] = merge(_todos[id], updates);
+  //Get the doc given id. This is needed because we need to specify a _rev of optimistic versioning.
+  //Use the _rev and id to update the document.
+  //If doc not found OR anything goes wrong -> handled upstream by promise catch
+  return db.get(id).then(function(todo){
+    if(!todo){
+      throw new Error("doc not found: " + id);
+    }
+    return db.put(updates, id, todo._rev);
+  });
 }
 
 /**
@@ -69,29 +77,58 @@ function update(id, updates) {
 
  */
 function updateAll(updates) {
-  for (var id in _todos) {
-    update(id, updates);
-  }
+
+  return getDocs().then(function(docs){
+    docs = _.map(docs, function(doc){
+      return _.merge(doc, updates);
+    });
+    return db.bulkDocs(docs);
+  });
 }
 
-/**
- * Delete a TODO item.
- * @param  {string} id
- */
+//Get the doc given id. This is needed because we need to specify a _rev of optimistic versioning.
+//Use the _rev and id to remove the document.
+//If doc not found OR anything goes wrong -> handled upstream by promise catch
 function destroy(id) {
-  delete _todos[id];
+  return db.get(id).then(function(todo){
+    if(!todo){
+      throw new Error("doc not found: " + id);
+    }
+    return db.remove(id, todo._rev);
+  });
 }
 
 /**
- * Delete all the completed TODO items.
+ * Delete all the completed items.
  */
 function destroyCompleted() {
-  for (var id in _todos) {
-    if (_todos[id].complete) {
-      destroy(id);
-    }
-  }
+  var deleteObj =  {_deleted: true};
+  return getDocs({complete: true}).then(function(docs){
+    docs = _.map(docs, function(doc){
+      return _.merge(doc,deleteObj);
+    });
+    return db.bulkDocs(docs);
+  });
 }
+
+function getDocs(where){
+  return db.allDocs({include_docs: true}).then(function(result){
+    var docs =  _.map(_.pluck(result.rows, "doc"), function(doc){
+      return _.merge(doc, {id: doc._id});
+    });
+    if(where){
+      docs = _.where(docs, where);
+    }
+    return docs;
+  });
+}
+
+function getDocsMap(where){
+  return getDocs(where).then(function(docs){
+    return _.zipObject(_.pluck(docs, '_id'), docs);
+  });
+}
+
 
 var TodoStore = merge(AbstractStore, {
 
@@ -106,21 +143,28 @@ var TodoStore = merge(AbstractStore, {
    * @return {booleam}
    */
   areAllComplete: function() {
-    for (id in _todos) {
-      if (!_todos[id].complete) {
-        return false;
-        break;
-      }
-    }
-    return true;
+    return false;
+    // for (id in _todos) {
+    //   if (!_todos[id].complete) {
+    //     return false;
+    //     break;
+    //   }
+    // }
+    // return true;
   },
 
   /**
    * Get the entire collection of TODOs.
    * @return {object}
    */
-  getAll: function() {
-    return _todos;
+  getAll: function(cb) {
+
+    getDocsMap().then(function(docsMap){
+      console.log("getAll cb about to be called");
+      cb(undefined,docsMap);
+    }).catch(function(err){
+      cb(err);
+    });
   },
 
   //declarative actions. 
@@ -169,10 +213,7 @@ var TodoStore = merge(AbstractStore, {
   onTodoCreate: function(action, resolve, reject){
     var text = action.text.trim();
     if (text !== '') {
-      create(text,function callback(err, result) {
-        if (err) return reject(err);
-        resolve(result);
-      });
+      create(text).then(resolve).catch(reject);
     }else{
       resolve();
     }
@@ -180,39 +221,35 @@ var TodoStore = merge(AbstractStore, {
 
   onTodoToggleCompleteAll: function(action, resolve, reject){
     if (TodoStore.areAllComplete()) {
-      updateAll({complete: false});
+      updateAll({complete: false}).then(resolve).catch(reject);
     } else {
-      updateAll({complete: true});
+      updateAll({complete: true}).then(resolve).catch(reject);
     }
-    resolve();
   },
 
   onTodoUndoComplete: function(action, resolve, reject){
-    update(action.id, {complete: false});
-    resolve();
+    update(action.id, {complete: false}).then(resolve).catch(reject);
   },
 
   onTodoComplete: function(action, resolve, reject){
-    update(action.id, {complete: true});
-    resolve();
+    update(action.id, {complete: true}).then(resolve).catch(reject);
   },
 
   onTodoUpdateText: function(action, resolve, reject){
     text = action.text.trim();
     if (text !== '') {
-      update(action.id, {text: text});
+      update(action.id, {text: text}).then(resolve).catch(reject);
+    }else{
+      resolve();
     }
-    resolve();
   },
 
   onTodoDestroy: function(action, resolve, reject){
-    destroy(action.id);
-    resolve();
+    destroy(action.id).then(resolve).catch(reject);
   },
 
   onTodoDestroyCompleted: function(action, resolve, reject){
-    destroyCompleted();
-    resolve();
+    destroyCompleted().then(resolve).catch(reject);
   },
 });
 
