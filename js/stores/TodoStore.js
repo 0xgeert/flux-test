@@ -75,7 +75,7 @@ function update(id, updates) {
  */
 function updateAll(updates) {
 
-  return getDocs().then(function(docs){
+  return getAllDocs().then(function(docs){
     docs = _.map(docs, function(doc){
       return _.merge(doc, updates);
     });
@@ -100,12 +100,17 @@ function destroy(id) {
  */
 function destroyMulti(where) {
   var deleteObj =  {_deleted: true};
-  return getDocs(where).then(function(docs){
+  return (where ? getDocs(where) : getAllDocs()).then(function(docs){
     docs = _.map(docs, function(doc){
       return _.merge(doc,deleteObj);
     });
     return db.bulkDocs(docs);
   });
+}
+
+function getAllDocs(){
+  //TODO: cache? 
+  return getDocs();
 }
 
 function getDocs(where){
@@ -123,7 +128,7 @@ function getDocs(where){
 }
 
 function getDocsMap(where){
-  return getDocs(where).then(function(docs){
+  return (where ? getDocs(where) : getAllDocs()).then(function(docs){
     return _.zipObject(_.pluck(docs, '_id'), docs);
   });
 }
@@ -157,7 +162,8 @@ var TodoStore = merge(AbstractStore, {
    * @return {object}
    */
   getAll: function(cb) {
-    getDocsMap().then(function(docsMap){
+    getAllDocs().then(function(docs){
+      var docsMap =  _.zipObject(_.pluck(docs, '_id'), docs);
       cb(undefined,docsMap);
     }).catch(function(err){
       cb(err);
