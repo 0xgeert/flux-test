@@ -41,7 +41,7 @@ var TodoStore = merge(AbstractStore, {
    * @return {booleam}
    */
   areAllComplete: function(cb) {
-    return TodoRepo.getAllDocs().then(function(docs){
+    return TodoRepo.getDocs().then(function(docs){
       var allComplete = docs.length === _.where(docs, {complete: true}).length;
       return cb(undefined, allComplete);
     })["catch"](function(err){
@@ -54,7 +54,7 @@ var TodoStore = merge(AbstractStore, {
    * @return {object}
    */
   getAll: function(cb) {
-    TodoRepo.getAllDocs().then(function(docs){
+    TodoRepo.getDocs().then(function(docs){
       var docsMap =  _.zipObject(_.pluck(docs, '_id'), docs);
       cb(undefined,docsMap);
     }).catch(function(err){
