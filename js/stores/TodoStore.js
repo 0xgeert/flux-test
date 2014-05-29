@@ -24,190 +24,9 @@ var merge = require('react/lib/merge');
 
 var AbstractStore = require('./AbstractStore');
 
-var Promise = require('es6-promise').Promise;
-
 var TodoConstants = require('../constants/TodoConstants');
 
-var PouchDB = require('pouchdb');
-var db = new PouchDB('todos');
-var remoteCouch = false;
-
-//simple implementation to check if bad performance is indeed due to pouchDB
-// var todos = {};
-// var db = {
-//   allDocs: function(){
-//     var result = {
-//       rows : _.map(_.values(todos), function(todo){
-//         return {doc: todo};
-//       })
-//     };
-//     return Promise.resolve(result);
-//   },
-//   put: function(partial, id){
-//     if(!id){
-//       //new
-//       todos[partial._id] = partial;
-//       return Promise.resolve(partial);
-//     }else{
-//       //change existing
-//       var todo = todos[id];
-//       if(!todo){
-//         return Promise.reject("doc not found");
-//       }
-//       todos[id] = _.merge(todo, partial);
-//       return Promise.resolve(todos[id]);
-//     }
-//   },
-//   get: function(id){
-//     return Promise.resolve(todos[id]);
-//   },
-//   remove: function(id){
-//     var todo =  todos[id];
-//     delete todos[id];
-//     return Promise.resolve(todo);
-//   },
-//   bulkDocs: function(docs){
-//     if(!docs.length){
-//       return Promise.resolve();
-//     }
-//     _.each(docs, function(doc){
-//       if(doc._deleted){
-//         delete todos[doc.id];
-//       }else{
-//         todos[doc.id] = doc;
-//       }
-//     }); 
-//     return Promise.resolve(docs);
-//   }
-// };
-
-
-//allDocsCache cache
-var allDocsCache;
-
-/**
- * Create a TODO item.
- * @param  {string} text The content of the TODO
- */
-function create(text) {
-  allDocsCache = undefined;
-  var todo = {
-    _id: new Date().toString('T'), //time now in string
-    complete: false,
-    text: text
-  };
- 
-  return db.put(todo); //put requires a new _id
-
-  //return db.post(todo);
-}
-
-/**
- * Update a TODO item.
- * @param  {string} id 
- * @param {object} updates An object literal containing only the data to be 
- *     updated.
- */
-function update(id, updates) {
-
-  allDocsCache = undefined;
-
-  //Get the doc given id. This is needed because we need to specify a _rev of optimistic versioning.
-  //Use the _rev and id to update the document.
-  //If doc not found OR anything goes wrong -> handled upstream by promise catch
-  return db.get(id).then(function(todo){
-    if(!todo){
-      throw new Error("doc not found: " + id);
-    }
-    todo = _.merge(todo, updates);
-    return db.put(todo, id, todo._rev);
-  });
-}
-
-/**
- * Update all of the TODO items with the same object. 
- *     the data to be updated.  Used to mark all TODOs as completed.
- * @param  {object} updates An object literal containing only the data to be 
- *     updated.
-
- */
-function updateAll(updates) {
-
-  allDocsCache = undefined;
-
-  return getAllDocs().then(function(docs){
-    docs = _.map(docs, function(doc){
-      return _.merge(doc, updates);
-    });
-    return db.bulkDocs(docs);
-  });
-}
-
-//Get the doc given id. This is needed because we need to specify a _rev of optimistic versioning.
-//Use the _rev and id to remove the document.
-//If doc not found OR anything goes wrong -> handled upstream by promise catch
-function destroy(id) {
-  allDocsCache = undefined;
-
-  return db.get(id).then(function(todo){
-    if(!todo){
-      throw new Error("doc not found: " + id);
-    }
-    return db.remove(id, todo._rev);
-  });
-}
-
-/**
- * Delete all the completed items.
- */
-function destroyMulti(where) {
-  allDocsCache = undefined;
-
-  var deleteObj =  {_deleted: true};
-  return (where ? getDocs(where) : getAllDocs()).then(function(docs){
-    docs = _.map(docs, function(doc){
-      return _.merge(doc,deleteObj);
-    });
-    return db.bulkDocs(docs);
-  });
-}
-
-
-function getAllDocs(){
-
-  //if cache not dirty -> return cache
-  if(allDocsCache) {
-    console.log("serving getAllDocs from cache");
-    return Promise.resolve(allDocsCache);
-  }
-
-  //if cache empty -> getDocs and fill cache
-  return getDocs().then(function(docs){
-    allDocsCache = docs;
-    return docs;
-  });
-}
-
-function getDocs(where){
-  var start = Date.now();
-  return db.allDocs({include_docs: true}).then(function(result){
-    console.log((where ? "getDocs" : "getAllDocs") + " took " + (Date.now() - start) + " millis");
-    var docs =  _.map(_.pluck(result.rows, "doc"), function(doc){
-      return _.merge(doc, {id: doc._id});
-    });
-    if(where){
-      docs = _.where(docs, where);
-    }
-    return docs;
-  });
-}
-
-function getDocsMap(where){
-  return (where ? getDocs(where) : getAllDocs()).then(function(docs){
-    return _.zipObject(_.pluck(docs, '_id'), docs);
-  });
-}
-
+var TodoRepo = require("../repositories/TodoRepository");
 
 var TodoStore = merge(AbstractStore, {
 
@@ -222,7 +41,7 @@ var TodoStore = merge(AbstractStore, {
    * @return {booleam}
    */
   areAllComplete: function(cb) {
-    return getAllDocs().then(function(docs){
+    return TodoRepo.getAllDocs().then(function(docs){
       var allComplete = docs.length === _.where(docs, {complete: true}).length;
       return cb(undefined, allComplete);
     })["catch"](function(err){
@@ -235,7 +54,7 @@ var TodoStore = merge(AbstractStore, {
    * @return {object}
    */
   getAll: function(cb) {
-    getAllDocs().then(function(docs){
+    TodoRepo.getAllDocs().then(function(docs){
       var docsMap =  _.zipObject(_.pluck(docs, '_id'), docs);
       cb(undefined,docsMap);
     }).catch(function(err){
@@ -295,41 +114,41 @@ var TodoStore = merge(AbstractStore, {
     if (text === '') {
       throw new Error("onTodoCreate shouldn't be called with empty text!");
     }
-    return create(text);
+    return TodoRepo.create(text);
   },
 
   onTodoToggleCompleteAll: function(action){
     return TodoStore.areAllComplete(function(err, allComplete){
       if(err) throw err;
       if (allComplete) {
-        return updateAll({complete: false});
+        return TodoRepo.updateAll({complete: false});
       } else {
-        return updateAll({complete: true});
+        return TodoRepo.updateAll({complete: true});
       }
     });
   },
 
   onTodoUndoComplete: function(action){
-    return update(action.id, {complete: false});
+    return TodoRepo.update(action.id, {complete: false});
   },
 
   onTodoComplete: function(action){
-    return update(action.id, {complete: true});
+    return TodoRepo.update(action.id, {complete: true});
   },
 
   onTodoUpdateText: function(action){
     var text = action.text.trim();
     if (text !== '') {
-      return update(action.id, {text: text});
+      return TodoRepo.update(action.id, {text: text});
     }
   },
 
   onTodoDestroy: function(action){
-    return destroy(action.id);
+    return TodoRepo.destroy(action.id);
   },
 
   onTodoDestroyCompleted: function(action){
-    return destroyMulti({complete: true});
+    return TodoRepo.destroyMulti({complete: true});
   },
 });
 
