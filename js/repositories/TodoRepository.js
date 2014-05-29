@@ -10,8 +10,8 @@ var remoteCouch = false;
 
 
 // when pouch signals error -> repopulate in-mem todos
+// this effectively functions as a rollback 
 var rollbackAfterConflict = function(err){
-	console.log("errrr!");
 	console.log(err);
 	todos = undefined; //clear cache
 	return db.allDocs({include_docs: true});
