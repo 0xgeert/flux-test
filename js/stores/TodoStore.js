@@ -1,3 +1,5 @@
+"use strict";
+
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -24,65 +26,7 @@ var AbstractStore = require('./AbstractStore');
 
 var TodoConstants = require('../constants/TodoConstants');
 
-var _todos = {};
-
-/**
- * Create a TODO item.
- * @param  {string} text The content of the TODO
- */
-function create(text) {
-  // Hand waving here -- not showing how this interacts with XHR or persistent
-  // server-side storage.
-  // Using the current timestamp in place of a real id.
-  var id = Date.now();
-  _todos[id] = {
-    id: id,
-    complete: false,
-    text: text
-  };
-}
-
-/**
- * Update a TODO item.
- * @param  {string} id 
- * @param {object} updates An object literal containing only the data to be 
- *     updated.
- */
-function update(id, updates) {
-  _todos[id] = merge(_todos[id], updates);
-}
-
-/**
- * Update all of the TODO items with the same object. 
- *     the data to be updated.  Used to mark all TODOs as completed.
- * @param  {object} updates An object literal containing only the data to be 
- *     updated.
-
- */
-function updateAll(updates) {
-  for (var id in _todos) {
-    update(id, updates);
-  }
-}
-
-/**
- * Delete a TODO item.
- * @param  {string} id
- */
-function destroy(id) {
-  delete _todos[id];
-}
-
-/**
- * Delete all the completed TODO items.
- */
-function destroyCompleted() {
-  for (var id in _todos) {
-    if (_todos[id].complete) {
-      destroy(id);
-    }
-  }
-}
+var TodoRepo = require("../repositories/TodoRepository");
 
 var TodoStore = merge(AbstractStore, {
 
@@ -96,22 +40,26 @@ var TodoStore = merge(AbstractStore, {
    * Tests whether all the remaining TODO items are marked as completed.
    * @return {booleam}
    */
-  areAllComplete: function() {
-    for (id in _todos) {
-      if (!_todos[id].complete) {
-        return false;
-        break;
-      }
-    }
-    return true;
+  areAllComplete: function(cb) {
+    return TodoRepo.getAllDocs().then(function(docs){
+      var allComplete = docs.length === _.where(docs, {complete: true}).length;
+      return cb(undefined, allComplete);
+    })["catch"](function(err){
+      cb(err);
+    });
   },
 
   /**
    * Get the entire collection of TODOs.
    * @return {object}
    */
-  getAll: function() {
-    return _todos;
+  getAll: function(cb) {
+    TodoRepo.getAllDocs().then(function(docs){
+      var docsMap =  _.zipObject(_.pluck(docs, '_id'), docs);
+      cb(undefined,docsMap);
+    }).catch(function(err){
+      cb(err);
+    });
   },
 
   //declarative actions. 
@@ -125,59 +73,87 @@ var TodoStore = merge(AbstractStore, {
   actions: {
     "TODO_CREATE": {
       fn: "onTodoCreate",
-      // waitFor: "test"
+      async: true
     },
-    "TODO_TOGGLE_COMPLETE_ALL": "onTodoToggleCompleteAll",
-    "TODO_UNDO_COMPLETE": "onTodoUndoComplete",
-    "TODO_COMPLETE": "onTodoComplete",
-    "TODO_UPDATE_TEXT": "onTodoUpdateText",
-    "TODO_DESTROY": "onTodoDestroy",
-    "TODO_DESTROY_COMPLETED": "onTodoDestroyCompleted"
+    "TODO_TOGGLE_COMPLETE_ALL":{
+      fn:  "onTodoToggleCompleteAll",
+      async: true
+    },
+    "TODO_UNDO_COMPLETE": {
+      fn: "onTodoUndoComplete",
+      async: true,
+    },
+    "TODO_COMPLETE": {
+      fn: "onTodoComplete",
+      async: true
+    },
+    "TODO_UPDATE_TEXT": {
+      fn: "onTodoUpdateText",
+      async: true
+    },
+    "TODO_DESTROY": {
+      fn: "onTodoDestroy",
+      async: true
+    },
+    "TODO_DESTROY_COMPLETED": {
+      fn: "onTodoDestroyCompleted",
+      async: true
+    }
   },
 
   ////////////////////
-  // Action methods //
+  // Action methods 
+  // 
+  // Action methods may be sync or async
+  // If async, they need to return a promise
+  // This is checked on init (as part of AbstractStore)
   ////////////////////
   
   onTodoCreate: function(action){
     var text = action.text.trim();
-    if (text !== '') {
-      create(text);
+    if (text === '') {
+      throw new Error("onTodoCreate shouldn't be called with empty text!");
     }
+    return TodoRepo.create(text);
   },
 
   onTodoToggleCompleteAll: function(action){
-    if (TodoStore.areAllComplete()) {
-      updateAll({complete: false});
-    } else {
-      updateAll({complete: true});
-    }
+    return TodoStore.areAllComplete(function(err, allComplete){
+      if(err) throw err;
+      if (allComplete) {
+        return TodoRepo.updateAll({complete: false});
+      } else {
+        return TodoRepo.updateAll({complete: true});
+      }
+    });
   },
 
   onTodoUndoComplete: function(action){
-    update(action.id, {complete: false});
+    return TodoRepo.update(action.id, {complete: false});
   },
 
   onTodoComplete: function(action){
-    update(action.id, {complete: true});
+    return TodoRepo.update(action.id, {complete: true});
   },
 
   onTodoUpdateText: function(action){
-    text = action.text.trim();
+    var text = action.text.trim();
     if (text !== '') {
-      update(action.id, {text: text});
+      return TodoRepo.update(action.id, {text: text});
     }
   },
 
   onTodoDestroy: function(action){
-    destroy(action.id);
+    return TodoRepo.destroy(action.id);
   },
 
   onTodoDestroyCompleted: function(action){
-    destroyCompleted();
+    return TodoRepo.destroyMulti({complete: true});
   },
 });
 
-_.bindAll(TodoStore);
+//NOTE: don't do bindAll for action methods (onX), since this 
+//fails inspection when testing for nr of params (async vs sync check)
+_.bindAll(TodoStore,["successCb","optimisticCb","failCb","emitChange"]);
 
 module.exports = TodoStore;

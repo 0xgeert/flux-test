@@ -189,17 +189,6 @@ function createMapFromActionDeclaration(store) {
       obj.fn = fn;
     }
 
-    //test function signature has 3 parameters (action, resolve, reject) when async
-    //and 1 parameter (action) when not async
-    //NOTE: these paramters can't be checked by name bc minification
-    var count = utils.getFunctionSignature(obj.fn).length;
-    if(obj.async && count !== 3){
-      throw new Error("an async handler should have 3 params (action , resolve, reject). (store, methodname, param count) :  "+ 
-        store.name + ", " + ref ? ref : "inline method" + ", " + count);
-    }else if(!obj.async && count !== 1){
-      throw new Error("a sync handler should have 1 params (action). (store, methodname, param count) :  "+ 
-        store.name + ", " + (ref ? ref : "inline method") + ", " + count);
-    }
 
     // wrap FN in promise. 
     // This unifies sync and async handlers. 
@@ -210,13 +199,17 @@ function createMapFromActionDeclaration(store) {
     // (in which case you perhaps want to resolve?)
     obj.fn = _.wrap(obj.fn, function(fn, action){
       return new Promise(function(resolve, reject) {
-        fn(action, resolve, reject);
+
+        //wrap function with a promise
+        //This allows async (method that return promise) and sync (methods that return something else)
+        //to be treated the same.
+        //
+        //Throws etc are correctly handled by doing a reject
+        Promise.resolve(fn(action)).then(resolve)["catch"](reject);
 
         //sync method returns directly. 
         //error is communicated by throwing (which in turn is caught by errorCb)
-        if(!obj.async){
-          resolve();
-        }else if(obj.optimistic){ //async and optimistic
+        if(obj.async && obj.optimistic){ //async and optimistic
           that.optimisticCb();
         }
       });

@@ -24,8 +24,8 @@
  */
 var SimpleChangeControllerViewMixin = {
 
-  getInitialState: function() {
-    return this.getStoreState();
+  getInitialStateAsync: function(cb) {
+    this.getStoreState(cb);
   },
 
   componentDidMount: function() {
@@ -46,7 +46,11 @@ var SimpleChangeControllerViewMixin = {
    * Event handler for 'change' events coming from the TodoStore
    */
   _onChange: function() {
-    this.setState(this.getStoreState());
+    var that = this;
+    this.getStoreState(function(err, data){
+      if(err) throw err;
+      that.setState(data);
+    });
   }
 };
 
