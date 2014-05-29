@@ -1,3 +1,5 @@
+"use strict";
+
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -29,6 +31,55 @@ var TodoConstants = require('../constants/TodoConstants');
 var PouchDB = require('pouchdb');
 var db = new PouchDB('todos');
 var remoteCouch = false;
+
+//simple implementation to check if bad performance is indeed due to pouchDB
+var todos = {};
+var db = {
+  allDocs: function(){
+    var result = {
+      rows : _.map(_.values(todos), function(todo){
+        return {doc: todo};
+      })
+    };
+    return Promise.resolve(result);
+  },
+  put: function(partial, id){
+    if(!id){
+      //new
+      todos[partial._id] = partial;
+      return Promise.resolve(partial);
+    }else{
+      //change existing
+      var todo = todos[id];
+      if(!todo){
+        return Promise.reject("doc not found");
+      }
+      todos[id] = _.merge(todo, partial);
+      return Promise.resolve(todos[id]);
+    }
+  },
+  get: function(id){
+    return Promise.resolve(todos[id]);
+  },
+  remove: function(id){
+    var todo =  todos[id];
+    delete todos[id];
+    return Promise.resolve(todo);
+  },
+  bulkDocs: function(docs){
+    if(!docs.length){
+      return Promise.resolve();
+    }
+    _.each(docs, function(doc){
+      if(doc._deleted){
+        delete todos[doc.id];
+      }else{
+        todos[doc.id] = doc;
+      }
+    }); 
+    return Promise.resolve(docs);
+  }
+};
 
 
 //allDocsCache cache
@@ -129,6 +180,7 @@ function getAllDocs(){
     return Promise.resolve(allDocsCache);
   }
 
+  //if cache empty -> getDocs and fill cache
   return getDocs().then(function(docs){
     allDocsCache = docs;
     return docs;
@@ -233,49 +285,46 @@ var TodoStore = merge(AbstractStore, {
   // Action methods //
   ////////////////////
   
-  onTodoCreate: function(action, resolve, reject){
+  onTodoCreate: function(action){
     var text = action.text.trim();
-    if (text !== '') {
-      return create(text).then(resolve).catch(reject);
-    }else{
-      return reject(new Error("onTodoCreate shouldn't be called with empty text!"));
+    if (text === '') {
+      throw new Error("onTodoCreate shouldn't be called with empty text!");
     }
+    return create(text);
   },
 
-  onTodoToggleCompleteAll: function(action, resolve, reject){
-    TodoStore.areAllComplete(function(err, allComplete){
-      if(err)return reject(err);
+  onTodoToggleCompleteAll: function(action){
+    return TodoStore.areAllComplete(function(err, allComplete){
+      if(err) throw err;
       if (allComplete) {
-        updateAll({complete: false}).then(resolve).catch(reject);
+        return updateAll({complete: false});
       } else {
-        updateAll({complete: true}).then(resolve).catch(reject);
+        return updateAll({complete: true});
       }
     });
   },
 
-  onTodoUndoComplete: function(action, resolve, reject){
-    update(action.id, {complete: false}).then(resolve).catch(reject);
+  onTodoUndoComplete: function(action){
+    return update(action.id, {complete: false});
   },
 
-  onTodoComplete: function(action, resolve, reject){
-    update(action.id, {complete: true}).then(resolve).catch(reject);
+  onTodoComplete: function(action){
+    return update(action.id, {complete: true});
   },
 
-  onTodoUpdateText: function(action, resolve, reject){
-    text = action.text.trim();
+  onTodoUpdateText: function(action){
+    var text = action.text.trim();
     if (text !== '') {
-      update(action.id, {text: text}).then(resolve).catch(reject);
-    }else{
-      resolve();
+      return update(action.id, {text: text});
     }
   },
 
-  onTodoDestroy: function(action, resolve, reject){
-    destroy(action.id).then(resolve).catch(reject);
+  onTodoDestroy: function(action){
+    return destroy(action.id);
   },
 
-  onTodoDestroyCompleted: function(action, resolve, reject){
-    destroyMulti({complete: true}).then(resolve).catch(reject);
+  onTodoDestroyCompleted: function(action){
+    return destroyMulti({complete: true});
   },
 });
 
