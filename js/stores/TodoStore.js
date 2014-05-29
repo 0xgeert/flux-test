@@ -146,15 +146,13 @@ var TodoStore = merge(AbstractStore, {
    * Tests whether all the remaining TODO items are marked as completed.
    * @return {booleam}
    */
-  areAllComplete: function() {
-    return false;
-    // for (id in _todos) {
-    //   if (!_todos[id].complete) {
-    //     return false;
-    //     break;
-    //   }
-    // }
-    // return true;
+  areAllComplete: function(cb) {
+    return getAllDocs().then(function(docs){
+      var allComplete = docs.length === _.where(docs, {complete: true}).length;
+      return cb(undefined, allComplete);
+    })["catch"](function(err){
+      cb(err);
+    });
   },
 
   /**
@@ -225,11 +223,14 @@ var TodoStore = merge(AbstractStore, {
   },
 
   onTodoToggleCompleteAll: function(action, resolve, reject){
-    if (TodoStore.areAllComplete()) {
-      updateAll({complete: false}).then(resolve).catch(reject);
-    } else {
-      updateAll({complete: true}).then(resolve).catch(reject);
-    }
+    TodoStore.areAllComplete(function(err, allComplete){
+      if(err)return reject(err);
+      if (allComplete) {
+        updateAll({complete: false}).then(resolve).catch(reject);
+      } else {
+        updateAll({complete: true}).then(resolve).catch(reject);
+      }
+    });
   },
 
   onTodoUndoComplete: function(action, resolve, reject){

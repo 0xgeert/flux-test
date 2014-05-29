@@ -28,6 +28,8 @@ var MainSection = require('./MainSection.react');
 var React = require('react');
 var ReactAsync = require('react-async');
 
+var _ = require("lodash");
+
 var TodoStore = require("../flux").stores.todo;
 
 var TodoApp = React.createClass({
@@ -47,9 +49,13 @@ var TodoApp = React.createClass({
   getStoreState: function(cb){
     TodoStore.getAll(function(err, result){
       if(err)return cb(err);
+
+      var docs = _.values(result),
+        allComplete = docs.length === _.where(docs, {complete: true}).length;
+
       cb(undefined,{
         allTodos: result,
-        areAllComplete: TodoStore.areAllComplete() //TODO: change implementation
+        areAllComplete: allComplete //TODO: change implementation
       });
     });
   },
