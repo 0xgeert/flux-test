@@ -26,8 +26,6 @@ var Promise = require('es6-promise').Promise;
 
 var TodoConstants = require('../constants/TodoConstants');
 
-//var _todos = {};
-
 var PouchDB = require('pouchdb');
 var db = new PouchDB('todos');
 var remoteCouch = false;
@@ -37,17 +35,16 @@ var remoteCouch = false;
  * @param  {string} text The content of the TODO
  */
 function create(text) {
-  // Hand waving here -- not showing how this interacts with XHR or persistent
-  // server-side storage.
-  // Using the current timestamp in place of a real id.
   
   var todo = {
-    _id: new Date().toString('T'), //time now in string
+    //_id: new Date().toString('T'), //time now in string
     complete: false,
     text: text
   };
-
-  return db.put(todo);
+ 
+  // return db.put(todo); //put requires a new _id
+  
+  return db.post(todo);
 }
 
 /**
@@ -101,9 +98,9 @@ function destroy(id) {
 /**
  * Delete all the completed items.
  */
-function destroyCompleted() {
+function destroyMulti(where) {
   var deleteObj =  {_deleted: true};
-  return getDocs({complete: true}).then(function(docs){
+  return getDocs(where).then(function(docs){
     docs = _.map(docs, function(doc){
       return _.merge(doc,deleteObj);
     });
@@ -112,7 +109,9 @@ function destroyCompleted() {
 }
 
 function getDocs(where){
+  var start = Date.now();
   return db.allDocs({include_docs: true}).then(function(result){
+    console.log("getDocs took " + (Date.now() - start) + " millis");
     var docs =  _.map(_.pluck(result.rows, "doc"), function(doc){
       return _.merge(doc, {id: doc._id});
     });
@@ -158,9 +157,7 @@ var TodoStore = merge(AbstractStore, {
    * @return {object}
    */
   getAll: function(cb) {
-
     getDocsMap().then(function(docsMap){
-      console.log("getAll cb about to be called");
       cb(undefined,docsMap);
     }).catch(function(err){
       cb(err);
@@ -213,9 +210,11 @@ var TodoStore = merge(AbstractStore, {
   onTodoCreate: function(action, resolve, reject){
     var text = action.text.trim();
     if (text !== '') {
-      create(text).then(resolve).catch(reject);
+      return create(text).then(function(asd){
+        resolve();
+      }).catch(reject);
     }else{
-      resolve();
+      return reject(new Error("onTodoCreate shouldn't be called with empty text!"));
     }
   },
 
@@ -249,7 +248,7 @@ var TodoStore = merge(AbstractStore, {
   },
 
   onTodoDestroyCompleted: function(action, resolve, reject){
-    destroyCompleted().then(resolve).catch(reject);
+    destroyMulti({complete: true}).then(resolve).catch(reject);
   },
 });
 

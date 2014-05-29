@@ -215,6 +215,7 @@ function createMapFromActionDeclaration(store) {
         //sync method returns directly. 
         //error is communicated by throwing (which in turn is caught by errorCb)
         if(!obj.async){
+          
           resolve();
         }else if(obj.optimistic){ //async and optimistic
           that.optimisticCb();

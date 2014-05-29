@@ -76,10 +76,9 @@ Dispatcher.prototype = merge(Dispatcher.prototype, {
         _resolves[i](payload);
       })["catch"](function(err) {
         console.log("#####################");
-        console.log("dispatcher caught");
         console.log(err);
         _rejects[i](new Error('Dispatcher callback unsuccessful'));
-      }).then(function() {
+      }).then(function(result) {
         //decr busy counter
         _busy--;
         console.log("decrement to: " + _busy);
