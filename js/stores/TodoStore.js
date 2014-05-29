@@ -33,53 +33,53 @@ var db = new PouchDB('todos');
 var remoteCouch = false;
 
 //simple implementation to check if bad performance is indeed due to pouchDB
-var todos = {};
-var db = {
-  allDocs: function(){
-    var result = {
-      rows : _.map(_.values(todos), function(todo){
-        return {doc: todo};
-      })
-    };
-    return Promise.resolve(result);
-  },
-  put: function(partial, id){
-    if(!id){
-      //new
-      todos[partial._id] = partial;
-      return Promise.resolve(partial);
-    }else{
-      //change existing
-      var todo = todos[id];
-      if(!todo){
-        return Promise.reject("doc not found");
-      }
-      todos[id] = _.merge(todo, partial);
-      return Promise.resolve(todos[id]);
-    }
-  },
-  get: function(id){
-    return Promise.resolve(todos[id]);
-  },
-  remove: function(id){
-    var todo =  todos[id];
-    delete todos[id];
-    return Promise.resolve(todo);
-  },
-  bulkDocs: function(docs){
-    if(!docs.length){
-      return Promise.resolve();
-    }
-    _.each(docs, function(doc){
-      if(doc._deleted){
-        delete todos[doc.id];
-      }else{
-        todos[doc.id] = doc;
-      }
-    }); 
-    return Promise.resolve(docs);
-  }
-};
+// var todos = {};
+// var db = {
+//   allDocs: function(){
+//     var result = {
+//       rows : _.map(_.values(todos), function(todo){
+//         return {doc: todo};
+//       })
+//     };
+//     return Promise.resolve(result);
+//   },
+//   put: function(partial, id){
+//     if(!id){
+//       //new
+//       todos[partial._id] = partial;
+//       return Promise.resolve(partial);
+//     }else{
+//       //change existing
+//       var todo = todos[id];
+//       if(!todo){
+//         return Promise.reject("doc not found");
+//       }
+//       todos[id] = _.merge(todo, partial);
+//       return Promise.resolve(todos[id]);
+//     }
+//   },
+//   get: function(id){
+//     return Promise.resolve(todos[id]);
+//   },
+//   remove: function(id){
+//     var todo =  todos[id];
+//     delete todos[id];
+//     return Promise.resolve(todo);
+//   },
+//   bulkDocs: function(docs){
+//     if(!docs.length){
+//       return Promise.resolve();
+//     }
+//     _.each(docs, function(doc){
+//       if(doc._deleted){
+//         delete todos[doc.id];
+//       }else{
+//         todos[doc.id] = doc;
+//       }
+//     }); 
+//     return Promise.resolve(docs);
+//   }
+// };
 
 
 //allDocsCache cache
@@ -119,7 +119,8 @@ function update(id, updates) {
     if(!todo){
       throw new Error("doc not found: " + id);
     }
-    return db.put(updates, id, todo._rev);
+    todo = _.merge(todo, updates);
+    return db.put(todo, id, todo._rev);
   });
 }
 
