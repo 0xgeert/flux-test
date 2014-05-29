@@ -24,7 +24,7 @@ db = {
 
   allDocs: function(opts){
   	if(!todos){
-  		console.log("remote lookup");
+  		// console.log("remote lookup");
   		return dbPouch.allDocs(opts).then(function(result){
   			console.log(result);
   			var docs = _.pluck(result.rows, "doc");
@@ -33,7 +33,7 @@ db = {
   			return result;
   		});
   	}else{
-  		console.log("local lookup");
+  		// console.log("local lookup");
   		var result = {
 	      rows : _.map(_.values(todos), function(todo){
 	        return {doc: todo};
@@ -44,19 +44,29 @@ db = {
   },
 
   put: function(partial, id, rev){
+
+  	var doc;
     if(!id){
       //new
       todos[partial._id] = partial;
-      return dbPouch.put(partial)["catch"](rollbackAfterConflict);
+      doc = partial; 
     }else{
       //change existing
       var todo = todos[id];
       if(!todo){
         return Promise.reject("doc not found");
       }
-      todos[id] = _.merge(todo, partial);
-      return dbPouch.put(todos[id], id, rev)["catch"](rollbackAfterConflict);
+      doc = todos[id] = _.merge(todo, partial);
     }
+
+    console.log("local create/put done");
+    //in all cases update pouch
+    return dbPouch.put(doc, id, rev).then(function(result){
+    	console.log("remote create/put done");
+    	//update cache with changed/created rev and id which may not yet exist
+    	doc._rev = result.rev;
+    	doc.id = result.id;
+    })["catch"](rollbackAfterConflict);
   },
   //requires in-mem store to be populated!
   get: function(id){
@@ -65,13 +75,12 @@ db = {
   },
 
   remove: function(id, rev){
+  	if(rev === undefined){
+  		throw new Error("rev needs to be defined when calling store.remove");
+  	}
     delete todos[id];
-    console.log("trying to remove...");
-    console.log(id);
-    return dbPouch.allDocs().then(function(result){
-    	console.log(result);
-    	return dbPouch.remove(id, rev)["catch"](rollbackAfterConflict);
-    });
+    console.log("local remove done");
+    return dbPouch.remove(id, rev)["catch"](rollbackAfterConflict);
   },
 
   bulkDocs: function(docs){
@@ -80,14 +89,24 @@ db = {
     }
     _.each(docs, function(doc){
       if(doc._deleted){
+      	//delete
         delete todos[doc.id];
       }else{
+      	//update
         todos[doc.id] = doc;
       }
     }); 
-    console.log("DELETE!!");
-    console.log(docs);
-    return dbPouch.bulkDocs(docs)["catch"](rollbackAfterConflict);
+
+    console.log("local bulk done");
+    return dbPouch.bulkDocs(docs).then(function(result){
+    	//update cache with changed rev
+    	_.each(result, function(changedDoc){
+    		var doc = todos[changedDoc.id];
+    		if(doc){
+    			doc._rev = changedDoc.rev;
+    		}
+    	});
+    })["catch"](rollbackAfterConflict);
   }
 };
 

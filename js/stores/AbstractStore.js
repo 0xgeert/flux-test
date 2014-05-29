@@ -25,16 +25,19 @@ var Promise = require('es6-promise').Promise;
 var flux = require("../flux");
 
 
+var actionStart;
+
 var AbstractStore = merge(EventEmitter.prototype, {
 
   //default success callback for stores implementing declarative 'actions'
   successCb: function(){
+    console.log("successCb change send, took: "  + (Date.now() - actionStart) + " millis");
     this.emitChange();
   },
 
   //default optimistic callback for stores implementing declarative 'actions'
   optimisticCb: function(){
-    console.log("optimistic change send");
+    console.log("optimistic change send, took: "  + (Date.now() - actionStart) + " millis");
     this.emitChange();
   },
 
@@ -135,6 +138,7 @@ var AbstractStore = merge(EventEmitter.prototype, {
 
 });
 
+
 function createMapFromActionDeclaration(store) {
 
   var that = store;
@@ -205,6 +209,8 @@ function createMapFromActionDeclaration(store) {
         //to be treated the same.
         //
         //Throws etc are correctly handled by doing a reject
+        actionStart = Date.now();
+      
         Promise.resolve(fn(action)).then(resolve)["catch"](reject);
 
         //sync method returns directly. 
@@ -212,6 +218,7 @@ function createMapFromActionDeclaration(store) {
         if(obj.async && obj.optimistic){ //async and optimistic
           that.optimisticCb();
         }
+
       });
     });
 

@@ -47,6 +47,7 @@ var TodoApp = React.createClass({
    * Retrieve the current TODO data from the TodoStore
    */
   getStoreState: function(cb){
+    console.log("getStoreState called");
     TodoStore.getAll(function(err, result){
       if(err)return cb(err);
 

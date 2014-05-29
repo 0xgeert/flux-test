@@ -74,31 +74,37 @@ var TodoStore = merge(AbstractStore, {
     "TODO_CREATE": {
       fn: "onTodoCreate",
       async: true,
-      //optimistic: true,
+      optimistic: true
     },
     "TODO_TOGGLE_COMPLETE_ALL":{
       fn:  "onTodoToggleCompleteAll",
-      async: true
+      async: true,
+      optimistic: true
     },
     "TODO_UNDO_COMPLETE": {
       fn: "onTodoUndoComplete",
       async: true,
+      optimistic: true
     },
     "TODO_COMPLETE": {
       fn: "onTodoComplete",
-      async: true
+      async: true,
+      optimistic: true
     },
     "TODO_UPDATE_TEXT": {
       fn: "onTodoUpdateText",
-      async: true
+      async: true,
+      optimistic: true
     },
     "TODO_DESTROY": {
       fn: "onTodoDestroy",
-      async: true
+      async: true,
+      optimistic: true
     },
     "TODO_DESTROY_COMPLETED": {
       fn: "onTodoDestroyCompleted",
-      async: true
+      async: true,
+      optimistic: true
     }
   },
 
