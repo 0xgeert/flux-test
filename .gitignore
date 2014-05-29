@@ -20,3 +20,4 @@ test/the-files-to-test.generated.js
 *.log*
 chrome-user-data
 js/bundle.js
+js/.bundle.js

@@ -7,60 +7,16 @@ var Promise = require('es6-promise').Promise;
 
 var _ = require("lodash");
 
-var PouchDB = require('pouchdb');
+//loaded by script
+// var PouchDB = require('pouchdb');
+
 var dbPouch = new PouchDB('todos');
+var dbPouchMem = new PouchDB('todos', {adapter: 'memory'});
+dbPouchMem.sync(dbPouch, {live: true});
+
 var remoteCouch = false;
 
-//simple implementation to check if bad performance is indeed due to pouchDB
-var todos = {};
-var dbInMem = {
-  allDocs: function(){
-    var result = {
-      rows : _.map(_.values(todos), function(todo){
-        return {doc: todo};
-      })
-    };
-    return Promise.resolve(result);
-  },
-  put: function(partial, id){
-    if(!id){
-      //new
-      todos[partial._id] = partial;
-      return Promise.resolve(partial);
-    }else{
-      //change existing
-      var todo = todos[id];
-      if(!todo){
-        return Promise.reject("doc not found");
-      }
-      todos[id] = _.merge(todo, partial);
-      return Promise.resolve(todos[id]);
-    }
-  },
-  get: function(id){
-    return Promise.resolve(todos[id]);
-  },
-  remove: function(id){
-    var todo =  todos[id];
-    delete todos[id];
-    return Promise.resolve(todo);
-  },
-  bulkDocs: function(docs){
-    if(!docs.length){
-      return Promise.resolve();
-    }
-    _.each(docs, function(doc){
-      if(doc._deleted){
-        delete todos[doc.id];
-      }else{
-        todos[doc.id] = doc;
-      }
-    }); 
-    return Promise.resolve(docs);
-  }
-};
-
-var db = usePouch ? dbPouch : dbInMem;
+var db = dbPouchMem;
 
 var TodoRepo = {
 
