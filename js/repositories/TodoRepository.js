@@ -1,66 +1,66 @@
 "use strict";
 
+//check perf diff
+var usePouch = true;
+
 var Promise = require('es6-promise').Promise;
 
 var _ = require("lodash");
 
 var PouchDB = require('pouchdb');
-var db = new PouchDB('todos');
+var dbPouch = new PouchDB('todos');
 var remoteCouch = false;
 
 //simple implementation to check if bad performance is indeed due to pouchDB
-// var todos = {};
-// var db = {
-//   allDocs: function(){
-//     var result = {
-//       rows : _.map(_.values(todos), function(todo){
-//         return {doc: todo};
-//       })
-//     };
-//     return Promise.resolve(result);
-//   },
-//   put: function(partial, id){
-//     if(!id){
-//       //new
-//       todos[partial._id] = partial;
-//       return Promise.resolve(partial);
-//     }else{
-//       //change existing
-//       var todo = todos[id];
-//       if(!todo){
-//         return Promise.reject("doc not found");
-//       }
-//       todos[id] = _.merge(todo, partial);
-//       return Promise.resolve(todos[id]);
-//     }
-//   },
-//   get: function(id){
-//     return Promise.resolve(todos[id]);
-//   },
-//   remove: function(id){
-//     var todo =  todos[id];
-//     delete todos[id];
-//     return Promise.resolve(todo);
-//   },
-//   bulkDocs: function(docs){
-//     if(!docs.length){
-//       return Promise.resolve();
-//     }
-//     _.each(docs, function(doc){
-//       if(doc._deleted){
-//         delete todos[doc.id];
-//       }else{
-//         todos[doc.id] = doc;
-//       }
-//     }); 
-//     return Promise.resolve(docs);
-//   }
-// };
-// 
+var todos = {};
+var dbInMem = {
+  allDocs: function(){
+    var result = {
+      rows : _.map(_.values(todos), function(todo){
+        return {doc: todo};
+      })
+    };
+    return Promise.resolve(result);
+  },
+  put: function(partial, id){
+    if(!id){
+      //new
+      todos[partial._id] = partial;
+      return Promise.resolve(partial);
+    }else{
+      //change existing
+      var todo = todos[id];
+      if(!todo){
+        return Promise.reject("doc not found");
+      }
+      todos[id] = _.merge(todo, partial);
+      return Promise.resolve(todos[id]);
+    }
+  },
+  get: function(id){
+    return Promise.resolve(todos[id]);
+  },
+  remove: function(id){
+    var todo =  todos[id];
+    delete todos[id];
+    return Promise.resolve(todo);
+  },
+  bulkDocs: function(docs){
+    if(!docs.length){
+      return Promise.resolve();
+    }
+    _.each(docs, function(doc){
+      if(doc._deleted){
+        delete todos[doc.id];
+      }else{
+        todos[doc.id] = doc;
+      }
+    }); 
+    return Promise.resolve(docs);
+  }
+};
 
-
-//allDocsCache cache
-var allDocsCache;
+var db = usePouch ? dbPouch : dbInMem;
 
 var TodoRepo = {
 
@@ -69,7 +69,6 @@ var TodoRepo = {
 	 * @param  {string} text The content of the TODO
 	 */
 	create: function(text) {
-	  allDocsCache = undefined;
 	  var todo = {
 	    _id: new Date().toString('T'), //time now in string
 	    complete: false,
@@ -88,8 +87,6 @@ var TodoRepo = {
 	 *     updated.
 	 */
 	update: function(id, updates) {
-
-	  allDocsCache = undefined;
 
 	  //Get the doc given id. This is needed because we need to specify a _rev of optimistic versioning.
 	  //Use the _rev and id to update the document.
@@ -112,9 +109,7 @@ var TodoRepo = {
 	 */
 	updateAll: function(updates) {
 
-	  allDocsCache = undefined;
-
-	  return this.getAllDocs().then(function(docs){
+	  return this.getDocs().then(function(docs){
 	    docs = _.map(docs, function(doc){
 	      return _.merge(doc, updates);
 	    });
@@ -126,7 +121,6 @@ var TodoRepo = {
 	//Use the _rev and id to remove the document.
 	//If doc not found OR anything goes wrong -> handled upstream by promise catch
 	destroy: function(id) {
-	  allDocsCache = undefined;
 
 	  return db.get(id).then(function(todo){
 	    if(!todo){
@@ -140,10 +134,9 @@ var TodoRepo = {
 	 * Delete all the completed items.
 	 */
 	destroyMulti: function(where) {
-	  allDocsCache = undefined;
 
 	  var deleteObj =  {_deleted: true};
-	  return (where ? this.getDocs(where) : this.getAllDocs()).then(function(docs){
+	  return this.getDocs(where).then(function(docs){
 	    docs = _.map(docs, function(doc){
 	      return _.merge(doc,deleteObj);
 	    });
@@ -151,26 +144,10 @@ var TodoRepo = {
 	  });
 	},
 
-
-	getAllDocs: function(){
-
-	  //if cache not dirty -> return cache
-	  if(allDocsCache) {
-	    console.log("serving getAllDocs from cache");
-	    return Promise.resolve(allDocsCache);
-	  }
-
-	  //if cache empty -> getDocs and fill cache
-	  return this.getDocs().then(function(docs){
-	    allDocsCache = docs;
-	    return docs;
-	  });
-	},
-
 	getDocs: function(where){
 	  var start = Date.now();
 	  return db.allDocs({include_docs: true}).then(function(result){
-	    console.log((where ? "getDocs" : "getAllDocs") + " took " + (Date.now() - start) + " millis");
+	    console.log("getDocs took " + (Date.now() - start) + " millis");
 	    var docs =  _.map(_.pluck(result.rows, "doc"), function(doc){
 	      return _.merge(doc, {id: doc._id});
 	    });
@@ -182,7 +159,7 @@ var TodoRepo = {
 	},
 
 	getDocsMap: function(where){
-	  return (where ? this.getDocs(where) : this.getAllDocs()).then(function(docs){
+	  return this.getDocs(where).then(function(docs){
 	    return _.zipObject(_.pluck(docs, '_id'), docs);
 	  });
 	}
