@@ -25,7 +25,6 @@
 var SimpleChangeControllerViewMixin = {
 
   getInitialStateAsync: function(cb) {
-    console.log("initial??");
     this.getStoreState(cb);
   },
 

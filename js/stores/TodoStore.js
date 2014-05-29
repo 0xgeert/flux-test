@@ -283,7 +283,11 @@ var TodoStore = merge(AbstractStore, {
   },
 
   ////////////////////
-  // Action methods //
+  // Action methods 
+  // 
+  // Action methods may be sync or async
+  // If async, they need to return a promise
+  // This is checked on init (as part of AbstractStore)
   ////////////////////
   
   onTodoCreate: function(action){
