@@ -37,14 +37,14 @@ var remoteCouch = false;
 function create(text) {
   
   var todo = {
-    //_id: new Date().toString('T'), //time now in string
+    _id: new Date().toString('T'), //time now in string
     complete: false,
     text: text
   };
  
-  // return db.put(todo); //put requires a new _id
-  
-  return db.post(todo);
+  return db.put(todo); //put requires a new _id
+
+  //return db.post(todo);
 }
 
 /**
