@@ -5,59 +5,91 @@ var Promise = require('es6-promise').Promise;
 var _ = require("lodash");
 
 var PouchDB = require('pouchdb');
-var db = new PouchDB('todos');
+var dbPouch = new PouchDB('todos');
 var remoteCouch = false;
 
-//simple implementation to check if bad performance is indeed due to pouchDB
-// var todos = {};
-// var db = {
-//   allDocs: function(){
-//     var result = {
-//       rows : _.map(_.values(todos), function(todo){
-//         return {doc: todo};
-//       })
-//     };
-//     return Promise.resolve(result);
-//   },
-//   put: function(partial, id){
-//     if(!id){
-//       //new
-//       todos[partial._id] = partial;
-//       return Promise.resolve(partial);
-//     }else{
-//       //change existing
-//       var todo = todos[id];
-//       if(!todo){
-//         return Promise.reject("doc not found");
-//       }
-//       todos[id] = _.merge(todo, partial);
-//       return Promise.resolve(todos[id]);
-//     }
-//   },
-//   get: function(id){
-//     return Promise.resolve(todos[id]);
-//   },
-//   remove: function(id){
-//     var todo =  todos[id];
-//     delete todos[id];
-//     return Promise.resolve(todo);
-//   },
-//   bulkDocs: function(docs){
-//     if(!docs.length){
-//       return Promise.resolve();
-//     }
-//     _.each(docs, function(doc){
-//       if(doc._deleted){
-//         delete todos[doc.id];
-//       }else{
-//         todos[doc.id] = doc;
-//       }
-//     }); 
-//     return Promise.resolve(docs);
-//   }
-// };
-// 
 
+// when pouch signals error -> repopulate in-mem todos
+var rollbackAfterConflict = function(err){
+	console.log("errrr!");
+	console.log(err);
+	todos = undefined; //clear cache
+	return db.allDocs({include_docs: true});
+};
+
+//simple implementation to check if bad performance is indeed due to pouchDB
+var db = dbPouch;
+var todos;
+db = {
+
+  allDocs: function(opts){
+  	if(!todos){
+  		console.log("remote lookup");
+  		return dbPouch.allDocs(opts).then(function(result){
+  			console.log(result);
+  			var docs = _.pluck(result.rows, "doc");
+  			todos = _.zipObject(_.pluck(docs, '_id'), docs);
+  			console.log(todos);
+  			return result;
+  		});
+  	}else{
+  		console.log("local lookup");
+  		var result = {
+	      rows : _.map(_.values(todos), function(todo){
+	        return {doc: todo};
+	      })
+	    };
+	    return Promise.resolve(result);
+  	}
+  },
+
+  put: function(partial, id, rev){
+    if(!id){
+      //new
+      todos[partial._id] = partial;
+      return dbPouch.put(partial)["catch"](rollbackAfterConflict);
+    }else{
+      //change existing
+      var todo = todos[id];
+      if(!todo){
+        return Promise.reject("doc not found");
+      }
+      todos[id] = _.merge(todo, partial);
+      return dbPouch.put(todos[id], id, rev)["catch"](rollbackAfterConflict);
+    }
+  },
+  //requires in-mem store to be populated!
+  get: function(id){
+  	//always fetch on in-mem store
+    return Promise.resolve(todos[id]);
+  },
+
+  remove: function(id, rev){
+    delete todos[id];
+    console.log("trying to remove...");
+    console.log(id);
+    return dbPouch.allDocs().then(function(result){
+    	console.log(result);
+    	return dbPouch.remove(id, rev)["catch"](rollbackAfterConflict);
+    });
+  },
+
+  bulkDocs: function(docs){
+    if(!docs.length){
+      return Promise.resolve();
+    }
+    _.each(docs, function(doc){
+      if(doc._deleted){
+        delete todos[doc.id];
+      }else{
+        todos[doc.id] = doc;
+      }
+    }); 
+    console.log("DELETE!!");
+    console.log(docs);
+    return dbPouch.bulkDocs(docs)["catch"](rollbackAfterConflict);
+  }
+};
 
 var TodoRepo = {
 

@@ -73,7 +73,8 @@ var TodoStore = merge(AbstractStore, {
   actions: {
     "TODO_CREATE": {
       fn: "onTodoCreate",
-      async: true
+      async: true,
+      //optimistic: true,
     },
     "TODO_TOGGLE_COMPLETE_ALL":{
       fn:  "onTodoToggleCompleteAll",
