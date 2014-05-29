@@ -118,6 +118,7 @@ var TodoStore = merge(AbstractStore, {
   },
 
   onTodoToggleCompleteAll: function(action){
+    console.log("bla");
     return TodoStore.areAllComplete(function(err, allComplete){
       if(err) throw err;
       if (allComplete) {

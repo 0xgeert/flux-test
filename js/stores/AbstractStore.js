@@ -189,40 +189,6 @@ function createMapFromActionDeclaration(store) {
       obj.fn = fn;
     }
 
-    //test function signature has 3 parameters (action, resolve, reject) when async
-    //and 1 parameter (action) when not async
-    //NOTE: these paramters can't be checked by name bc minification
-    // var count = utils.getFunctionSignature(obj.fn).length;
-    // if(obj.async && count !== 3){
-    //   throw new Error("an async handler should have 3 params (action , resolve, reject). (store, methodname, param count) :  "+ 
-    //     store.name + ", " + ref ? ref : "inline method" + ", " + count);
-    // }else if(!obj.async && count !== 1){
-    //   throw new Error("a sync handler should have 1 params (action). (store, methodname, param count) :  "+ 
-    //     store.name + ", " + (ref ? ref : "inline method") + ", " + count);
-    // }
-    
-
-    //check that async handler returns a promise
-    //implements https://github.com/gebrits/flux-test/issues/14
-    if(obj.async){
-      var promise,
-        skip = false;
-      try{
-        promise = obj.fn({
-          id:"test"
-        });
-      }catch(err){
-        skip = true;
-        console.log("INFO: Failed to check if async store handler returns promise (store, ref) " + store.name + ", " + ref);
-        //skip error. Possible that 
-      }
-      if(!skip){
-        if(!promise || !promise.then){
-          throw new Error("Async store handler doesn't return promise (store, ref) : " + store.name + ", " + ref);
-        }
-      }
-    }
-
 
     // wrap FN in promise. 
     // This unifies sync and async handlers. 
