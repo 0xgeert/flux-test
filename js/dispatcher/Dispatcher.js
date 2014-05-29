@@ -48,10 +48,11 @@ Dispatcher.prototype = merge(Dispatcher.prototype, {
    */
   dispatch: function(payload) {
     console.log("##################################");
-    console.log(payload.action.actionType);
     if(_busy){
       throw new Error("dispatcher is currently busy processing an action");
     }
+
+    var start = Date.now();
 
     // First create array of promises for callbacks to reference.
     var _resolves = [];
@@ -68,7 +69,7 @@ Dispatcher.prototype = merge(Dispatcher.prototype, {
 
       //incr busy counter
       _busy++;
-      console.log("increment to: " + _busy);
+      //console.log("increment to: " + _busy);
 
       // Callback can return an obj, to resolve, or a promise, to chain.
       // See waitFor() for why this might be useful.
@@ -81,7 +82,11 @@ Dispatcher.prototype = merge(Dispatcher.prototype, {
       }).then(function(result) {
         //decr busy counter
         _busy--;
-        console.log("decrement to: " + _busy);
+        //console.log("decrement to: " + _busy);
+        if(_busy===0){
+          var stop = Date.now();
+          console.log(payload.action.actionType + " takes "  + (stop-start) + " millis");
+        }
       });
     });
     _promises = [];

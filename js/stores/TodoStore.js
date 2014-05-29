@@ -31,15 +31,15 @@ var db = new PouchDB('todos');
 var remoteCouch = false;
 
 
-//allDocs cache
-var allDocs;
+//allDocsCache cache
+var allDocsCache;
 
 /**
  * Create a TODO item.
  * @param  {string} text The content of the TODO
  */
 function create(text) {
-  allDocs = undefined;
+  allDocsCache = undefined;
   var todo = {
     _id: new Date().toString('T'), //time now in string
     complete: false,
@@ -59,7 +59,7 @@ function create(text) {
  */
 function update(id, updates) {
 
-  allDocs = undefined;
+  allDocsCache = undefined;
 
   //Get the doc given id. This is needed because we need to specify a _rev of optimistic versioning.
   //Use the _rev and id to update the document.
@@ -81,7 +81,7 @@ function update(id, updates) {
  */
 function updateAll(updates) {
 
-  allDocs = undefined;
+  allDocsCache = undefined;
 
   return getAllDocs().then(function(docs){
     docs = _.map(docs, function(doc){
@@ -95,7 +95,7 @@ function updateAll(updates) {
 //Use the _rev and id to remove the document.
 //If doc not found OR anything goes wrong -> handled upstream by promise catch
 function destroy(id) {
-  allDocs = undefined;
+  allDocsCache = undefined;
 
   return db.get(id).then(function(todo){
     if(!todo){
@@ -109,7 +109,7 @@ function destroy(id) {
  * Delete all the completed items.
  */
 function destroyMulti(where) {
-  allDocs = undefined;
+  allDocsCache = undefined;
 
   var deleteObj =  {_deleted: true};
   return (where ? getDocs(where) : getAllDocs()).then(function(docs){
@@ -124,11 +124,13 @@ function destroyMulti(where) {
 function getAllDocs(){
 
   //if cache not dirty -> return cache
-  if(allDocs) return Promise.resolve(allDocs);
+  if(allDocsCache) {
+    console.log("serving getAllDocs from cache");
+    return Promise.resolve(allDocsCache);
+  }
 
   return getDocs().then(function(docs){
-    console.log(docs);
-    allDocs = docs;
+    allDocsCache = docs;
     return docs;
   });
 }
@@ -136,7 +138,7 @@ function getAllDocs(){
 function getDocs(where){
   var start = Date.now();
   return db.allDocs({include_docs: true}).then(function(result){
-    console.log("getDocs took " + (Date.now() - start) + " millis");
+    console.log((where ? "getDocs" : "getAllDocs") + " took " + (Date.now() - start) + " millis");
     var docs =  _.map(_.pluck(result.rows, "doc"), function(doc){
       return _.merge(doc, {id: doc._id});
     });
@@ -234,9 +236,7 @@ var TodoStore = merge(AbstractStore, {
   onTodoCreate: function(action, resolve, reject){
     var text = action.text.trim();
     if (text !== '') {
-      return create(text).then(function(asd){
-        resolve();
-      }).catch(reject);
+      return create(text).then(resolve).catch(reject);
     }else{
       return reject(new Error("onTodoCreate shouldn't be called with empty text!"));
     }
