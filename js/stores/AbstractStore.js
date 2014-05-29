@@ -218,7 +218,6 @@ function createMapFromActionDeclaration(store) {
         if(obj.async && obj.optimistic){ //async and optimistic
           that.optimisticCb();
         }
-
       });
     });
 
