@@ -30,12 +30,16 @@ var PouchDB = require('pouchdb');
 var db = new PouchDB('todos');
 var remoteCouch = false;
 
+
+//allDocs cache
+var allDocs;
+
 /**
  * Create a TODO item.
  * @param  {string} text The content of the TODO
  */
 function create(text) {
-  
+  allDocs = undefined;
   var todo = {
     _id: new Date().toString('T'), //time now in string
     complete: false,
@@ -54,6 +58,8 @@ function create(text) {
  *     updated.
  */
 function update(id, updates) {
+
+  allDocs = undefined;
 
   //Get the doc given id. This is needed because we need to specify a _rev of optimistic versioning.
   //Use the _rev and id to update the document.
@@ -75,6 +81,8 @@ function update(id, updates) {
  */
 function updateAll(updates) {
 
+  allDocs = undefined;
+
   return getAllDocs().then(function(docs){
     docs = _.map(docs, function(doc){
       return _.merge(doc, updates);
@@ -87,6 +95,8 @@ function updateAll(updates) {
 //Use the _rev and id to remove the document.
 //If doc not found OR anything goes wrong -> handled upstream by promise catch
 function destroy(id) {
+  allDocs = undefined;
+
   return db.get(id).then(function(todo){
     if(!todo){
       throw new Error("doc not found: " + id);
@@ -99,6 +109,8 @@ function destroy(id) {
  * Delete all the completed items.
  */
 function destroyMulti(where) {
+  allDocs = undefined;
+
   var deleteObj =  {_deleted: true};
   return (where ? getDocs(where) : getAllDocs()).then(function(docs){
     docs = _.map(docs, function(doc){
@@ -108,9 +120,17 @@ function destroyMulti(where) {
   });
 }
 
+
 function getAllDocs(){
-  //TODO: cache? 
-  return getDocs();
+
+  //if cache not dirty -> return cache
+  if(allDocs) return Promise.resolve(allDocs);
+
+  return getDocs().then(function(docs){
+    console.log(docs);
+    allDocs = docs;
+    return docs;
+  });
 }
 
 function getDocs(where){
