@@ -27,10 +27,8 @@ db = {
   	if(!todos){
   		// console.log("remote lookup");
   		return dbPouch.allDocs(opts).then(function(result){
-  			console.log(result);
   			var docs = _.pluck(result.rows, "doc");
   			todos = _.zipObject(_.pluck(docs, '_id'), docs);
-  			console.log(todos);
   			return result;
   		});
   	}else{
