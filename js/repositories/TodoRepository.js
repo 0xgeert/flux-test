@@ -13,6 +13,7 @@ var remoteCouch = false;
 // this effectively functions as a rollback 
 var rollbackAfterConflict = function(err){
 	console.log(err);
+	console.log("rolling back...");
 	todos = undefined; //clear cache
 	return db.allDocs({include_docs: true});
 };
@@ -194,9 +195,9 @@ var TodoRepo = {
 	},
 
 	getDocs: function(where){
-	  var start = Date.now();
+	  // var start = Date.now();
 	  return db.allDocs({include_docs: true}).then(function(result){
-	    console.log("getDocs took " + (Date.now() - start) + " millis");
+	    // console.log("getDocs took " + (Date.now() - start) + " millis");
 	    var docs =  _.map(_.pluck(result.rows, "doc"), function(doc){
 	      return _.merge(doc, {id: doc._id});
 	    });
