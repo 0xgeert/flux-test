@@ -11,8 +11,17 @@ var remoteCouch = false;
 
 
 var DB = function(config){
+
+	//if no cache -> use pouchDB directly
+	//When set, optimistic update events are moot, 
+	//since they fire using a _.defer() placing them at the back of the stack,
+	//but updates to pouchDb take longer than that. 
+	if(config.noCache){
+		return new PouchDB(config.db);
+	}
+
 	var db =  {
-		docs: [],
+		docs: undefined,
 		dbPouch: new PouchDB(config.db),
 
 		// when pouch signals error -> repopulate in-mem todos
@@ -36,7 +45,7 @@ var DB = function(config){
 			};
 
 			if(!this.docs){
-				// console.log("remote lookup");
+				console.log("remote lookup");
 				return that.dbPouch.allDocs(opts).then(function(result){
 					var docs = _.pluck(result.rows, "doc");
 					that.docs = _.zipObject(_.pluck(docs, '_id'), docs);
@@ -45,7 +54,7 @@ var DB = function(config){
 					return result;
 				});
 			}else{
-				// console.log("local lookup");
+				console.log("local lookup");
 				var result = {
 		      rows : _.map(_.values(that.docs), function(doc){
 		        return {doc: doc};
@@ -133,21 +142,18 @@ var DB = function(config){
 };
 
 
-var AbstractRepo = {
-	
-	init: function(config){
-		this.db = new DB(config);
-		return this;
-	},
+var AbstractRepo = function(config){
+
+	this.db = new DB(config);
 
 	/**
 	 * Create a doc.
 	 * @param  {string} text The content of the doc
 	 */
-	create: function(obj) {
+	this.create =  function(obj) {
 	  return this.db.put(obj); //put requires a new _id
 	  //return db.post(obj);
-	},
+	};
 
 	/**
 	 * Update a doc.
@@ -155,7 +161,7 @@ var AbstractRepo = {
 	 * @param {object} updates An object literal containing only the data to be 
 	 *     updated.
 	 */
-	update: function(id, updates) {
+	this.update =  function(id, updates) {
 
 		var that = this;
 
@@ -169,7 +175,7 @@ var AbstractRepo = {
 			doc = _.merge(doc, updates);
 			return that.db.put(doc, id, doc._rev);
 		});
-	},
+	};
 
 	/**
 	 * Update all of the docs with the same object. 
@@ -178,7 +184,7 @@ var AbstractRepo = {
 	 *     updated.
 
 	 */
-	updateAll: function(updates) {
+	this.updateAll =  function(updates) {
 
 		var that = this;
 
@@ -188,12 +194,12 @@ var AbstractRepo = {
 			});
 			return that.db.bulkDocs(docs);
 		});
-	},
+	};
 
 	//Get the doc given id. This is needed because we need to specify a _rev of optimistic versioning.
 	//Use the _rev and id to remove the document.
 	//If doc not found OR anything goes wrong -> handled upstream by promise catch
-	destroy: function(id) {
+	this.destroy =  function(id) {
 
 		var that = this;
 
@@ -203,12 +209,12 @@ var AbstractRepo = {
 			}
 			return that.db.remove(id, doc._rev);
 		});
-	},
+	};
 
 	/**
 	 * Delete all the completed items.
 	 */
-	destroyMulti: function(where) {
+	this.destroyMulti =  function(where) {
 
 		var that = this;
 
@@ -219,9 +225,9 @@ var AbstractRepo = {
 			});
 			return that.db.bulkDocs(docs);
 		});
-	},
+	};
 
-	getDocs: function(where){
+	this.getDocs =  function(where){
 
 		var that = this;
 
@@ -236,15 +242,16 @@ var AbstractRepo = {
 			}
 			return docs;
 		});
-	},
+	};
 
-	getDocsMap: function(where){
+	this.getDocsMap =  function(where){
 
 		return this.getDocs(where).then(function(docs){
 			return _.zipObject(_.pluck(docs, '_id'), docs);
 		});
-	}
+	};
 
 };
+	
 
 module.exports = AbstractRepo;
