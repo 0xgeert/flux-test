@@ -39,6 +39,8 @@ var TodoApp = React.createClass({
     ReactAsync.Mixin
   ],
 
+  //list the stores this Controller-view should listen to. 
+  //plubming by mixing in SimpleChangeControllerView
   stores: [
     TodoStore
   ],
