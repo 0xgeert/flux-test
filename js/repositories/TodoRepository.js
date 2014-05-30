@@ -24,11 +24,22 @@ var todos;
 db = {
 
   allDocs: function(opts){
+
+  	var orderById = function(result){
+  		result.rows = _.sortBy(result.rows, function(row){
+  			return row.doc._id;
+  		});
+  		// result.rows.reverse();
+  		return result;
+  	};
+
   	if(!todos){
   		// console.log("remote lookup");
   		return dbPouch.allDocs(opts).then(function(result){
   			var docs = _.pluck(result.rows, "doc");
   			todos = _.zipObject(_.pluck(docs, '_id'), docs);
+
+  			result = orderById(result);
   			return result;
   		});
   	}else{
@@ -38,6 +49,11 @@ db = {
 	        return {doc: todo};
 	      })
 	    };
+
+	    result.total_rows = result.rows.length;
+	    result.offset= 0; //TODO: this *may* become dynamic iff we decide to implement https://github.com/gebrits/flux-test/issues/17
+
+	    result = orderById(result);
 	    return Promise.resolve(result);
   	}
   },
