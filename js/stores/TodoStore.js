@@ -159,8 +159,6 @@ var TodoStore = merge(AbstractStore, {
   },
 });
 
-//NOTE: don't do bindAll for action methods (onX), since this 
-//fails inspection when testing for nr of params (async vs sync check)
-_.bindAll(TodoStore,["successCb","optimisticCb","failCb","emitChange"]);
+_.bindAll(TodoStore);
 
 module.exports = TodoStore;

@@ -67,6 +67,7 @@ db = {
     	doc.id = result.id;
     })["catch"](rollbackAfterConflict);
   },
+  
   //requires in-mem store to be populated!
   get: function(id){
   	//always fetch on in-mem store
