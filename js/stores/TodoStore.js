@@ -49,6 +49,7 @@ var TodoStore = merge(AbstractStore, {
     });
   },
 
+
   /**
    * Get the entire collection of TODOs.
    * @return {object}
@@ -73,31 +74,38 @@ var TodoStore = merge(AbstractStore, {
   actions: {
     "TODO_CREATE": {
       fn: "onTodoCreate",
-      async: true
+      async: true,
+      optimistic: true
     },
     "TODO_TOGGLE_COMPLETE_ALL":{
       fn:  "onTodoToggleCompleteAll",
-      async: true
+      async: true,
+      optimistic: true
     },
     "TODO_UNDO_COMPLETE": {
       fn: "onTodoUndoComplete",
       async: true,
+      optimistic: true
     },
     "TODO_COMPLETE": {
       fn: "onTodoComplete",
-      async: true
+      async: true,
+      optimistic: true
     },
     "TODO_UPDATE_TEXT": {
       fn: "onTodoUpdateText",
-      async: true
+      async: true,
+      optimistic: true
     },
     "TODO_DESTROY": {
       fn: "onTodoDestroy",
-      async: true
+      async: true,
+      optimistic: true
     },
     "TODO_DESTROY_COMPLETED": {
       fn: "onTodoDestroyCompleted",
-      async: true
+      async: true,
+      optimistic: true
     }
   },
 
@@ -152,8 +160,6 @@ var TodoStore = merge(AbstractStore, {
   },
 });
 
-//NOTE: don't do bindAll for action methods (onX), since this 
-//fails inspection when testing for nr of params (async vs sync check)
-_.bindAll(TodoStore,["successCb","optimisticCb","failCb","emitChange"]);
+_.bindAll(TodoStore);
 
 module.exports = TodoStore;
