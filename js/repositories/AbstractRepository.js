@@ -45,7 +45,6 @@ var DB = function(config){
 			};
 
 			if(!this.docs){
-				console.log("remote lookup");
 				return that.dbPouch.allDocs(opts).then(function(result){
 					var docs = _.pluck(result.rows, "doc");
 					that.docs = _.zipObject(_.pluck(docs, '_id'), docs);
@@ -54,7 +53,6 @@ var DB = function(config){
 					return result;
 				});
 			}else{
-				console.log("local lookup");
 				var result = {
 		      rows : _.map(_.values(that.docs), function(doc){
 		        return {doc: doc};
