@@ -18,23 +18,27 @@
 
 var _ = require("lodash");
 
-//NOTE: require them to be in lowercase
-var stores = {
-	todo: require('./stores/TodoStore'),
-	//test: require('./stores/TestStore'),
-};
 
-var flux = require("./flux");
-flux.init({
-	stores: stores
+io.socket.on("connect", function(){
+	//NOTE: require them to be in lowercase
+	var stores = {
+		todo: require('./stores/TodoStore'),
+		//test: require('./stores/TestStore'),
+	};
+
+	var flux = require("./flux");
+	flux.init({
+		stores: stores
+	});
+
+	var React = require('react');
+
+	var TodoApp = require('./components/TodoApp.react');
+
+
+	React.renderComponent(
+	  <TodoApp />,
+	  document.getElementById('todoapp')
+	);
 });
 
-var React = require('react');
-
-var TodoApp = require('./components/TodoApp.react');
-
-
-React.renderComponent(
-  <TodoApp />,
-  document.getElementById('todoapp')
-);
