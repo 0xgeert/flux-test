@@ -1,15 +1,20 @@
 "use strict";
 
-var AbstractRepo = require("./AbstractRepository");
+var AbstractRepo = require("./AbstractRepoWaterline");
 
 var noCache = false;
+
 
 var TodoRepo = function(){
 
 	//init
 	AbstractRepo.call(this, {
-		db: "todos",
-		noCache: noCache
+		collection: "todo",
+		noCache: noCache,
+		adapter: {
+			//config for the remote adapter
+			//this is extended with 'collection'  as defined above
+		} 
 	});
 
 	/**
@@ -19,14 +24,12 @@ var TodoRepo = function(){
 	this.create= function(text) {
 
 		var todo = {
-			_id: new Date().toString('T'), //time now in string
+			// id: new Date().toString('T'), //TODO: create with custom id not supported in waterline? 
 			complete: false,
 			text: text
 		};
 	 		
-	  	return this.db.put(todo); //put requires a new _id
-
-	  	//return db.post(todo);
+	  	return this.db.create(todo);
 	};
 };
 

@@ -16,6 +16,8 @@
  * @jsx React.DOM
  */
 
+var _ = require("lodash");
+
 //NOTE: require them to be in lowercase
 var stores = {
 	todo: require('./stores/TodoStore'),

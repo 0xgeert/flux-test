@@ -56,7 +56,7 @@ var TodoStore = merge(AbstractStore, {
    */
   getAll: function(cb) {
     TodoRepo.getDocs().then(function(docs){
-      var docsMap =  _.zipObject(_.pluck(docs, '_id'), docs);
+      var docsMap =  _.zipObject(_.pluck(docs, 'id'), docs);
       cb(undefined,docsMap);
     }).catch(function(err){
       cb(err);
