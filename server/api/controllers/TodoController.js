@@ -63,7 +63,6 @@ module.exports = {
 		Todo.destroy(where).exec(function(err, todos) {
 		   if (err) {return res.serverError();}
 
-		   console.log("testing");
 		   //let clients know what happened so they can sync up
 		   Todo.message(todos,{
 		   	moeha: "jaja"
