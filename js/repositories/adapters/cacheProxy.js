@@ -4,8 +4,6 @@
 var _ = require("lodash");
 var Promise = require('es6-promise').Promise;
 
-var adapterFN = require("./sails-socket");
-
 /**
  * A adapter to plug into a repository. 
  * This adapter is a facade around sails.socket.io
@@ -15,26 +13,14 @@ var adapterFN = require("./sails-socket");
  * and outdated: http://sailsjs.org/#!documentation/sockets
  * 
  * 
- * @param  {[type]} config [description]
  * @return {[type]}        [description]
  */
-var cacheProxyFN = function(config){
-
-	var col = config.collection;
-	if(col === undefined){
-		throw new Error("collection is not defined for sails-socket adapter");
-	}
-
-	//switch to signal if documents need revisions for UD updates.
-	var revNeeded = config.revNeeded;
+var cacheProxyFN = function(adapterToWrap){
 
 	var adapter = {
 
-		adapter: adapterFN(_.extend({
-			collection: config.collection
-		}, config.adapter || {})),
+		adapter: adapterToWrap,
 
-		
 		docs: undefined,
 
 		// when adapter signals error -> repopulate in-mem todos
@@ -141,9 +127,6 @@ var cacheProxyFN = function(config){
 			
 			doc = this.docs[id] = _.extend(doc, partial);
 
-			if(revNeeded && doc._rev === undefined){
-				return Promise.reject("'rev' should exist on doc when calling repo.update");
-			}
 			var that = this;
 			return this._wrapWithPromise(function(){
 				return that.adapter.update(id, partial);

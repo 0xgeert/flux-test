@@ -16,25 +16,31 @@
  * @jsx React.DOM
  */
 
-var _ = require("lodash");
-
+var TodoRepoFN = require("./repositories/TodoRepository");
 
 io.socket.on("connect", function(){
+
+	var repos = {
+		todo: new TodoRepoFN({
+	    	cache: true
+	  	})
+	};
 	//NOTE: require them to be in lowercase
 	var stores = {
 		todo: require('./stores/TodoStore'),
 		//test: require('./stores/TestStore'),
 	};
 
+
 	var flux = require("./flux");
 	flux.init({
-		stores: stores
+		stores: stores,
+		repos: repos
 	});
 
 	var React = require('react');
 
 	var TodoApp = require('./components/TodoApp.react');
-
 
 	React.renderComponent(
 	  <TodoApp />,

@@ -4,6 +4,8 @@
 var _ = require("lodash");
 var Promise = require('es6-promise').Promise;
 
+var cacheProxy = require("./cacheProxy");
+
 /**
  * A adapter to plug into a repository. 
  * This adapter is a facade around sails.socket.io
@@ -25,6 +27,8 @@ var sailsSocketFN = function(config){
 		throw new Error("collection is not defined for sails-socket adapter");
 	}
 
+	this.adapterName = "sailsSocket";
+
 	//endpoint, e.g.: /user
 	var endpoint = "/"+col;
 
@@ -33,7 +37,6 @@ var sailsSocketFN = function(config){
 		console.log("event received");
 		console.log(cometEvent);
 	});
-
 
 	var adapter = {
 		find: function(){
@@ -184,8 +187,16 @@ var sailsSocketFN = function(config){
 		},
 	};
 
-	return adapter;
-
+	//////////////////////
+	console.log("** Registered Repository: " + config.name + " *************");
+	console.log("**** adapter: " + this.adapterName);
+	if(config.cache){
+		console.log("**** cached: yes");
+		return cacheProxy(adapter);
+	}else{
+		console.log("**** cached: no");
+		return adapter;
+	}
 };
 
 module.exports = sailsSocketFN;

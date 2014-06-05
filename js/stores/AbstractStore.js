@@ -12,8 +12,6 @@
 
 var _ = require("lodash");
 
-var utils = require("../utils");
-
 var AppDispatcher = require('../dispatcher/AppDispatcher');
 
 var EventEmitter = require('events').EventEmitter;
@@ -23,7 +21,6 @@ var merge = require('react/lib/merge');
 var Promise = require('es6-promise').Promise;
 
 var flux = require("../flux");
-
 
 var actionStart;
 
@@ -61,6 +58,13 @@ var AbstractStore = merge(EventEmitter.prototype, {
       throw new Error("Store cannot have both 'callbackFN' and 'actions'  defined: " + this.name);
     }
 
+    //repositories to use. 
+    //the repositories will be loaded from 'flux.repos.<name>' and made available as 
+    //this.<name>Repo
+    if (this.repos === undefined) {
+      throw new Error("Store should have 'repos'  defined");
+    }
+
     if(this.actions !== undefined ){
 
       if (this.constants === undefined) {
@@ -83,6 +87,12 @@ var AbstractStore = merge(EventEmitter.prototype, {
     if (this.CHANGE_EVENT === undefined) {
       throw new Error("Store should have 'CHANGE_EVENT'  defined: " + this.name);
     }
+
+    //add repos based on this.repos declaration
+    var that = this; 
+    _.each(this.repos, function(repoName){
+      that[repoName + "Repo"] = flux.repos[repoName];
+    });
 
     //create 'callbackFN' from this.actions which is defined declaratively
     var dag = [];

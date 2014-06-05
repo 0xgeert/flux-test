@@ -2,20 +2,16 @@
 
 var AbstractRepo = require("./AbstractRepoWaterline");
 
-var noCache = false;
+var _ = require("lodash");
 
+var TodoRepoFN = function(opts){
 
-var TodoRepo = function(){
+	this.name =  "todoRepo";
 
 	//init
-	AbstractRepo.call(this, {
+	AbstractRepo.call(this, _.extend(opts,{
 		collection: "todo",
-		noCache: noCache,
-		adapter: {
-			//config for the remote adapter
-			//this is extended with 'collection'  as defined above
-		} 
-	});
+	}));
 
 	/**
 	 * Create a TODO item.
@@ -33,7 +29,6 @@ var TodoRepo = function(){
 	};
 };
 
-TodoRepo.prototype = Object.create(AbstractRepo.prototype); // inherit
+TodoRepoFN.prototype = Object.create(AbstractRepo.prototype); // inherit
 
-
-module.exports = new TodoRepo();
+module.exports = TodoRepoFN;

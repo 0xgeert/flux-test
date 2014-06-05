@@ -26,8 +26,6 @@ var AbstractStore = require('./AbstractStore');
 
 var TodoConstants = require('../constants/TodoConstants');
 
-var TodoRepo = require("../repositories/TodoRepository");
-
 var TodoStore = merge(AbstractStore, {
 
   CHANGE_EVENT:'change',
@@ -36,12 +34,19 @@ var TodoStore = merge(AbstractStore, {
   
   constants: TodoConstants,
 
+  //repositories to use. 
+  //the repositories will be loaded from 'flux.repos.<name>' and made available as 
+  //this.<name>Repo
+  repos: [
+    "todo"
+  ],
+
   /**
    * Tests whether all the remaining TODO items are marked as completed.
    * @return {booleam}
    */
   areAllComplete: function(cb) {
-    return TodoRepo.getDocs().then(function(docs){
+    return this.todoRepo.getDocs().then(function(docs){
       var allComplete = docs.length === _.where(docs, {complete: true}).length;
       return cb(undefined, allComplete);
     })["catch"](function(err){
@@ -49,13 +54,12 @@ var TodoStore = merge(AbstractStore, {
     });
   },
 
-
   /**
    * Get the entire collection of TODOs.
    * @return {object}
    */
   getAll: function(cb) {
-    TodoRepo.getDocs().then(function(docs){
+    this.todoRepo.getDocs().then(function(docs){
       var docsMap =  _.zipObject(_.pluck(docs, 'id'), docs);
       cb(undefined,docsMap);
     }).catch(function(err){
@@ -122,41 +126,44 @@ var TodoStore = merge(AbstractStore, {
     if (text === '') {
       throw new Error("onTodoCreate shouldn't be called with empty text!");
     }
-    return TodoRepo.create(text);
+    return this.todoRepo.create(text);
   },
 
   onTodoToggleCompleteAll: function(action){
+    var that = this;
     return TodoStore.areAllComplete(function(err, allComplete){
-      if(err) throw err;
+      if(err){
+         throw err;
+      }
       if (allComplete) {
-        return TodoRepo.updateAll({complete: false});
+        return that.todoRepo.updateAll({complete: false});
       } else {
-        return TodoRepo.updateAll({complete: true});
+        return that.todoRepo.updateAll({complete: true});
       }
     });
   },
 
   onTodoUndoComplete: function(action){
-    return TodoRepo.update(action.id, {complete: false});
+    return this.todoRepo.update(action.id, {complete: false});
   },
 
   onTodoComplete: function(action){
-    return TodoRepo.update(action.id, {complete: true});
+    return this.todoRepo.update(action.id, {complete: true});
   },
 
   onTodoUpdateText: function(action){
     var text = action.text.trim();
     if (text !== '') {
-      return TodoRepo.update(action.id, {text: text});
+      return this.todoRepo.update(action.id, {text: text});
     }
   },
 
   onTodoDestroy: function(action){
-    return TodoRepo.destroy(action.id);
+    return this.todoRepo.destroy(action.id);
   },
 
   onTodoDestroyCompleted: function(action){
-    return TodoRepo.destroyMulti({complete: true});
+    return this.todoRepo.destroyMulti({complete: true});
   },
 });
 

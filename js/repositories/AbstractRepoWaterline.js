@@ -2,7 +2,7 @@
 
 var _ = require("lodash");
 
-var adapter = require("./adapters/cacheProxy");
+var adapter = require("./adapters/sails-socket");
 
 /**
  * AbstractRepo that could be used to model different Repositories.
@@ -11,13 +11,19 @@ var adapter = require("./adapters/cacheProxy");
  */
 var AbstractRepo = function(config) {
 
+	if(this.name === undefined){
+		throw new Error("Respositories should have a 'name' defined");	
+	}
+
 	if(config === undefined){
 		throw new Error("Reopsitory cannot be init without config-param");
 	}
 	if(config.collection === undefined){
 		throw new Error("Reopsitory cannot be init without config.collection");
 	}
-	this.db = new adapter(config);
+	this.db = new adapter(_.extend(config, {
+		name: this.name
+	}));
 
 	/**
 	 * Create a doc.

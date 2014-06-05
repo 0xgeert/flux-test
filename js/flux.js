@@ -21,6 +21,11 @@ var Flux = merge(EventEmitter.prototype, {
 		if(config.stores === undefined){
 			throw new Error("Flux should be passed a config object that contains 'stores'");
 		}
+
+		if(config.repos === undefined){
+			throw new Error("Flux should be passed a config object that contains 'respos'");
+		}
+		this.repos = config.repos;
 		this.stores = config.stores;
 
 		//init stores
