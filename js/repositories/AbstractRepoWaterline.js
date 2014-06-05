@@ -101,14 +101,20 @@ var DB = function(config) {
 				return Promise.reject("'rev' should exist on doc when calling repo.update");
 			}
 
-			return that.adapter.update(id, doc, doc._rev).then(function(result) {
+			return that.adapter.update(id, doc, doc._rev).then(function(createdDoc) {
+				
+				//mixin some server generated props such as 'createdAt', etc.
+				_.extend(doc, createdDoc);
+
+				//NOTE: relic but may be useful again
 				//update cache with changed/created rev
-				doc._rev = result.rev;
+				//doc._rev = result.rev;
+				
 			})["catch"](this.rollbackAfterConflict);
 		},
 
 
-		updateMulti: function(docs) {
+		updateMulti: function(docs, updates) {
 			var that = this;
 
 			if (!docs.length) {
@@ -120,19 +126,22 @@ var DB = function(config) {
 					if(revNeeded && doc._rev === undefined){
 						throw new Error("'_rev' should exist on doc when passed to updateMulti");
 					}
-					that.docs[doc.id] = doc;
+					_.extend(doc, updates);
 				});
 			}catch(err){
 				return Promise.reject(err);
 			}
-			
 
-			return that.adapter.updateMulti(docs).then(function(result) {
-				//update cache with changed rev
+			return that.adapter.updateMulti(docs, updates).then(function(result) {
+				
 				_.each(result, function(changedDoc) {
 					var doc = that.docs[changedDoc.id];
 					if (doc) {
-						doc._rev = changedDoc.rev;
+						_.extend(doc, changedDoc);
+
+						//update cache with changed rev
+						//NOTE: relic, but may be useful in future
+						//doc._rev = changedDoc.rev;
 					}
 				});
 			})["catch"](this.rollbackAfterConflict);
@@ -153,7 +162,12 @@ var DB = function(config) {
 
 		},
 
-
+		/**
+		 * remove the documents passed by param 'docs'.
+		 * First the docs are deleted locally after which the remote removeMulti is called.
+		 * @param  {[type]} docs [description]
+		 * @return {[type]}      [description]
+		 */
 		removeMulti: function(docs) {
 			var that = this;
 			if (!docs.length) {
@@ -223,10 +237,7 @@ var AbstractRepo = function(config) {
 		var that = this;
 
 		return that.getDocs().then(function(docs) {
-			docs = _.map(docs, function(doc) {
-				return _.merge(doc, updates);
-			});
-			return that.db.updateMulti(docs);
+			return that.db.updateMulti(docs, updates);
 		});
 	};
 

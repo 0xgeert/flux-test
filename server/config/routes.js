@@ -30,6 +30,16 @@ module.exports.routes = {
     view: 'homepage'
   },
 
+  /**
+   * batch remove
+   * payload should consist of an object with param 'ids' which contains an array of id's
+   */
+  'DELETE /todo': 'TodoController.removeMulti',
+
+  'PUT /todo': 'TodoController.updateMulti',
+
+
+
 
   // Custom routes here...
 

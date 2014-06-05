@@ -1,5 +1,7 @@
 "use strict";
 
+
+var _ = require("lodash");
 var Promise = require('es6-promise').Promise;
 
 /**
@@ -37,6 +39,9 @@ var sailsSocketFN = function(config){
 		find: function(){
 			return new Promise(function(resolve, reject) {
 				socket.get(endpoint, function (response) {
+					if(response.statusCode || response.status){ //error?
+						return reject(response.statusCode || response.status);
+					}
 				  	resolve(response);
 				});
 			});
@@ -45,18 +50,19 @@ var sailsSocketFN = function(config){
 			return new Promise(function(resolve, reject) {
 				var url = endpoint + "/"+ id;
 				socket.get(url, function (response) {
+					if(response.statusCode || response.status){ //error?
+						return reject(response.statusCode || response.status);
+					}
 				  	resolve(response);
 				});
 			});
 		},
 		create: function(doc){
 			return new Promise(function(resolve, reject) {
-				var timer = setTimeout(function(){ //testing 
-					reject(new Error("timeout"));
-				}, 1000);
 				socket.post(endpoint, doc, function(response){
-					console.log("adapter: create");
-					clearTimeout(timer);
+					if(response.statusCode || response.status){ //error?
+						return reject(response.statusCode || response.status);
+					}
 					resolve(response);
 				});
 			});
@@ -65,14 +71,71 @@ var sailsSocketFN = function(config){
 			return new Promise(function(resolve, reject) {
 				var url = endpoint + "/"+ doc.id;
 				socket.put(url, doc, function (response) {
+					if(response.statusCode || response.status){ //error?
+						return reject(response.statusCode || response.status);
+					}
 				  	resolve(response);
 				});
 			});
 		},
+		/**
+		 * This implementation only uses ids to update. 
+		 * In the future we may implement optimistic versioning which would also need '_rev' per doc
+		 * @param  {[type]} docs array of documents. 
+		 * @return {[type]}      [description]
+		 */
+		updateMulti: function(docs, updates){
+			
+			var payload = {
+				ids: _.pluck(docs, "id"),
+				partial: updates
+			};
+			return new Promise(function(resolve, reject) {
+				socket.put(endpoint, payload, function (response) {
+					if(response.statusCode || response.status){ //error?
+						return reject(response.statusCode || response.status);
+					}
+
+					//response = array of updated objects
+				  	resolve(response);
+				});
+			});
+		},
+
 		remove: function(id, rev){
 			return new Promise(function(resolve, reject) {
 				var url = endpoint + "/"+ id;
 				socket.delete(url, function (response) {
+					if(response.statusCode || response.status){ //error?
+						return reject(response.statusCode || response.status);
+					}
+				  	resolve(response);
+				});
+			});
+		},
+
+		/**
+		 * This implementation only uses ids to delete. 
+		 * In the future we may implement optimistic versioning which would also need '_rev' per doc
+		 * @param  {[type]} docs array of documents. 
+		 * @return {[type]}      [description]
+		 */
+		removeMulti: function(docs){
+			
+			var payload = {
+				ids:  _.pluck(docs, "id")
+			};
+
+			return new Promise(function(resolve, reject) {
+				socket.delete(endpoint, payload, function (response) {
+					//https://github.com/gebrits/flux-test/issues/24
+					//TODO: are all errors guarenteed to pass 'statusCode'? 
+					//http://stackoverflow.com/questions/24056059/whats-the-error-signature-from-a-socket-io-response-in-sailsjs
+					if(response.statusCode || response.status){ //error?
+						return reject(response.statusCode || response.status);
+					}
+
+					//response = array of deleted objects
 				  	resolve(response);
 				});
 			});
