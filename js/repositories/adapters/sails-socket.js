@@ -6,7 +6,7 @@ var Promise = require('es6-promise').Promise;
 
 var cacheProxy = require("./cacheProxy");
 
-var initSocketLiveFeedHandler = function(col, endpoint){
+var initSocketLiveFeedHandler = function(col, endpoint, liveActions){
 	
     var socket = io.socket;
 
@@ -34,43 +34,64 @@ var initSocketLiveFeedHandler = function(col, endpoint){
 		
 
 		if(obj.verb === "created"){
+
+
 			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishcreate-datarequest-
 			//
 			//The default implementation of publishCreate only publishes messages to the firehose, 
 			//and to sockets subscribed to the model class using the **watch** method. 
 			//It also subscribes all sockets "watching" the model class to the new instance. 
+			
+			//pass the newly created object
+			liveActions.createFromServer(obj.data);
+
 		}else if(obj.verb === "updated"){
 			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishupdate-idchangesrequestoptions-
 			//
 			// emits a socket message using the model identity as the event name. 
 			// The message is broadcast to all sockets subscribed to the model instance via the .subscribe model method.
+			
+			//pass the updated object
+			liveActions.updateFromServer(_.extend(obj.previous, obj.data));
+
 		}else if(obj.verb === "destroyed"){
 			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishdestroy-id-request-options-
 			//
 			//emits a socket message using the model identity as the event name. 
 			//The message is broadcast to all sockets subscribed to the model instance via the .subscribe model method.
-		}else if(obj.verb === "messaged"){
-			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#message-modelsdata-request-
-			//
-			//emits a socket message using the model identity as the event name. 
-			//The message is broadcast to all sockets subscribed to the model instance via the .subscribe model method.
-			//NOTE: this can be used to broadcast a custom message
-		}else if(obj.verb === "addedTo"){
-			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishadd-idattribute-idadded-request-options-
-			//
-			//Publishes a notification when an associated record is added to a model's collection.
-			//
-			//emits a socket message using the model identity as the event name. 
-			//The message is broadcast to all sockets subscribed to the model instance via the .subscribe model method.
-		}else if(obj.verb === "removedFrom"){
-			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishremove-idattribute-idremoved-request-options-
-			//
-			//Publishes a notification when an associated record is removed to a model's collection. 
-			//
-			// emits a socket message using the model identity as the event name. 
-			// The message is broadcast to all sockets subscribed to the model instance via the .subscribe model method.
+			
+
+			//pass the destroyed object
+			liveActions.destroyFromServer(obj.previous);
+
 		}
-		console.log(obj);
+		else{
+			console.log("TBD: UNHANDLED STUFF FROM HERE");
+			if(obj.verb === "messaged"){
+				//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#message-modelsdata-request-
+				//
+				//emits a socket message using the model identity as the event name. 
+				//The message is broadcast to all sockets subscribed to the model instance via the .subscribe model method.
+				//NOTE: this can be used to broadcast a custom message
+			}else if(obj.verb === "addedTo"){
+				//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishadd-idattribute-idadded-request-options-
+				//
+				//Publishes a notification when an associated record is added to a model's collection.
+				//
+				//emits a socket message using the model identity as the event name. 
+				//The message is broadcast to all sockets subscribed to the model instance via the .subscribe model method.
+			}else if(obj.verb === "removedFrom"){
+				//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishremove-idattribute-idremoved-request-options-
+				//
+				//Publishes a notification when an associated record is removed to a model's collection. 
+				//
+				// emits a socket message using the model identity as the event name. 
+				// The message is broadcast to all sockets subscribed to the model instance via the .subscribe model method.
+			}else{
+				console.log("Message with unexisting or not-modeled verb");
+			}
+			console.log(obj);
+		}
 	});
 };
 
@@ -94,13 +115,20 @@ var sailsSocketFN = function(config){
 	if(col === undefined){
 		throw new Error("collection is not defined for sails-socket adapter");
 	}
-
+	
 	this.adapterName = "sailsSocket";
 
 	//endpoint, e.g.: /user
 	var endpoint = "/"+col;
 
-	initSocketLiveFeedHandler(col, endpoint);
+	//setup live feed with server, which enables client to receive realtime (pushed) updates from the server
+	if(config.live){
+
+		if(config.liveActions === undefined){
+			throw new Error("'config.liveActions' is not defined for sails-socket adapter that is configured to receive live updates");
+		}
+		initSocketLiveFeedHandler(col, endpoint, config.liveActions);
+	}
 
 	var adapter = {
 		find: function(){
@@ -127,11 +155,17 @@ var sailsSocketFN = function(config){
 				});
 			});
 		},
-		create: function(doc){
+
+		create: function(doc, isServerCall){
+			console.log("isServerCall: " + isServerCall);
 			if(!_.isObject(doc)){
 				return Promise.reject(new Error("'doc' is not an object"));
 			}
 			return new Promise(function(resolve, reject) {
+				if(isServerCall){
+					return resolve(doc);
+				}
+
 				socket.post(endpoint, doc, function(response){
 					if(response.statusCode || response.status){ //error?
 						return reject(response.statusCode || response.status);
@@ -140,7 +174,8 @@ var sailsSocketFN = function(config){
 				});
 			});
 		},
-		update: function(id, partial){
+
+		update: function(id, partial, isServerCall){
 
 			if (id === undefined) {
 				return Promise.reject(new Error("'id' not specified"));
@@ -150,6 +185,12 @@ var sailsSocketFN = function(config){
 			} 
 
 			return new Promise(function(resolve, reject) {
+
+				if(isServerCall){
+					//partial is entire doc
+					return resolve(partial);
+				}
+
 				var url = endpoint + "/"+ id;
 				socket.put(url, partial, function (response) {
 					if(response.statusCode || response.status){ //error?
@@ -159,6 +200,36 @@ var sailsSocketFN = function(config){
 				});
 			});
 		},
+
+		remove: function(id, isServerCall){
+
+			if (id === undefined) {
+				return Promise.reject(new Error("'id' not specified"));
+			} 
+
+			return new Promise(function(resolve, reject) {
+
+				if(isServerCall){
+					return resolve(id);
+				}
+
+				var url = endpoint + "/"+ id;
+				socket.delete(url, function (response) {
+					if(response.statusCode || response.status){ //error?
+						return reject(response.statusCode || response.status);
+					}
+					//a bit ackward: it would be cool to be able to return deleted doc
+					//but then that's not in line with serverCall
+					//which is essential for all clients (the one hhaving initiated and the
+					//other following) behaving in the exact same manner
+					//
+					//TODO: it would be possible for servercall upstream to 
+					//return deleted object
+				  	resolve(id); 
+				});
+			});
+		},
+
 		/**
 		 * This implementation only uses ids to update. 
 		 * In the future we may implement optimistic versioning which would also need '_rev' per doc
@@ -195,22 +266,7 @@ var sailsSocketFN = function(config){
 			});
 		},
 
-		remove: function(id){
-
-			if (id === undefined) {
-				return Promise.reject(new Error("'id' not specified"));
-			} 
-
-			return new Promise(function(resolve, reject) {
-				var url = endpoint + "/"+ id;
-				socket.delete(url, function (response) {
-					if(response.statusCode || response.status){ //error?
-						return reject(response.statusCode || response.status);
-					}
-				  	resolve(response);
-				});
-			});
-		},
+		
 
 		/**
 		 * This implementation only uses ids to delete. 
@@ -254,6 +310,7 @@ var sailsSocketFN = function(config){
 	//////////////////////
 	console.log("** Registered Repository: " + config.name + " *************");
 	console.log("**** adapter: " + this.adapterName + ((config.adapterIsDefault) ? " (default)": ""));
+	console.log("**** live updates from server: " + ((config.live)? "yes": "no"));
 	if(config.cache){
 		console.log("**** cached: yes");
 		return cacheProxy(adapter);
@@ -261,6 +318,7 @@ var sailsSocketFN = function(config){
 		console.log("**** cached: no");
 		return adapter;
 	}
+
 };
 
 module.exports = sailsSocketFN;

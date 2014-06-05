@@ -19,11 +19,16 @@
 var keyMirror = require('react/lib/keyMirror');
 
 module.exports = keyMirror({
-  TODO_CREATE: null,
-  TODO_COMPLETE: null,
-  TODO_DESTROY: null,
-  TODO_DESTROY_COMPLETED: null,
-  TODO_TOGGLE_COMPLETE_ALL: null,
-  TODO_UNDO_COMPLETE: null,
-  TODO_UPDATE_TEXT: null
+	
+	CREATESERVER: null,
+	UPDATESERVER: null,
+	DESTROYSERVER: null,
+
+	CREATE: null,
+	COMPLETE: null,
+	DESTROY: null,
+	DESTROY_COMPLETED: null,
+	TOGGLE_COMPLETE_ALL: null,
+	UNDO_COMPLETE: null,
+	UPDATE_TEXT: null
 });

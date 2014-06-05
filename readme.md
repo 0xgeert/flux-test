@@ -72,7 +72,7 @@ Occasionally we may need to add additional controller-views deeper in the hierar
 
 ### Actions 
 
-The dispatcher exposes a method that allows a view to trigger a dispatch to the stores, and to include a payload of data, or an action. The action construction may be wrapped into a semantic helper method which sends the payload to the dispatcher. For example, we may want to change the text of a to-do item in a to-do list application. We would create an action with a function signature like `updateText(todoId, newText)` in our `TodoActions` module. This method may be invoked from within our views' event handlers, so we can call it in response to a user action. This action method also adds the action type to the payload, so that when the payload is interpreted in the store, it can respond appropriately to a payload with a particular action type. In our example, this type might be named something like `TODO_UPDATE_TEXT`. 
+The dispatcher exposes a method that allows a view to trigger a dispatch to the stores, and to include a payload of data, or an action. The action construction may be wrapped into a semantic helper method which sends the payload to the dispatcher. For example, we may want to change the text of a to-do item in a to-do list application. We would create an action with a function signature like `updateText(todoId, newText)` in our `TodoActions` module. This method may be invoked from within our views' event handlers, so we can call it in response to a user action. This action method also adds the action type to the payload, so that when the payload is interpreted in the store, it can respond appropriately to a payload with a particular action type. In our example, this type might be named something like `UPDATE_TEXT`. 
 
 Actions may also come from other places, such as the server. This happens, for example, during data initialization. It may also happen when the server returns an error code or when the server has updates to provide to the application. We'll talk more about server actions in a future article. In this post we're only concerned with the basics of the data flow.
 
@@ -84,7 +84,7 @@ As mentioned earlier, the dispatcher is also able to manage dependencies between
 Within the TodoStore's registered callback we can explicitly wait for any dependencies to first update before moving forward: 
 
 ``` 
-case 'TODO_CREATE': 
+case 'CREATE': 
   Dispatcher.waitFor([ 
     PrependedTextStore.dispatcherIndex, 
     YetAnotherStore.dispatcherIndex 

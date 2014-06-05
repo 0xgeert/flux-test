@@ -21,12 +21,33 @@ var TodoConstants = require('../constants/TodoConstants');
 
 var TodoActions = {
 
+  createFromServer: function(obj){
+     AppDispatcher.handleServerAction({
+      actionType: TodoConstants.CREATESERVER,
+      obj: obj
+    });
+  },
+
+  updateFromServer: function(obj){
+     AppDispatcher.handleServerAction({
+      actionType: TodoConstants.UPDATESERVER,
+      obj: obj
+    });
+  },
+
+  destroyFromServer: function(obj){
+     AppDispatcher.handleServerAction({
+      actionType: TodoConstants.DESTROYSERVER,
+      obj: obj
+    });
+  },
+
   /**
    * @param  {string} text
    */
   create: function(text) {
     AppDispatcher.handleViewAction({
-      actionType: TodoConstants.TODO_CREATE,
+      actionType: TodoConstants.CREATE,
       text: text
     });
   },
@@ -37,7 +58,7 @@ var TodoActions = {
    */
   updateText: function(id, text) {
     AppDispatcher.handleViewAction({
-      actionType: TodoConstants.TODO_UPDATE_TEXT,
+      actionType: TodoConstants.UPDATE_TEXT,
       id: id,
       text: text
     });
@@ -51,12 +72,12 @@ var TodoActions = {
     var id = todo.id;
     if (todo.complete) {
       AppDispatcher.handleViewAction({
-        actionType: TodoConstants.TODO_UNDO_COMPLETE,
+        actionType: TodoConstants.UNDO_COMPLETE,
         id: id
       });
     } else {
       AppDispatcher.handleViewAction({
-        actionType: TodoConstants.TODO_COMPLETE,
+        actionType: TodoConstants.COMPLETE,
         id: id
       });
     }
@@ -67,7 +88,7 @@ var TodoActions = {
    */
   toggleCompleteAll: function() {
     AppDispatcher.handleViewAction({
-      actionType: TodoConstants.TODO_TOGGLE_COMPLETE_ALL
+      actionType: TodoConstants.TOGGLE_COMPLETE_ALL
     });
   },
 
@@ -76,7 +97,7 @@ var TodoActions = {
    */
   destroy: function(id) {
     AppDispatcher.handleViewAction({
-      actionType: TodoConstants.TODO_DESTROY,
+      actionType: TodoConstants.DESTROY,
       id: id
     });
   },
@@ -86,7 +107,7 @@ var TodoActions = {
    */
   destroyCompleted: function() {
     AppDispatcher.handleViewAction({
-      actionType: TodoConstants.TODO_DESTROY_COMPLETED
+      actionType: TodoConstants.DESTROY_COMPLETED
     });
   }
 

@@ -17,7 +17,7 @@ var TodoRepoFN = function(opts){
 	 * Create a TODO item.
 	 * @param  {string} text The content of the TODO
 	 */
-	this.create= function(text) {
+	this.createWithText= function(text) {
 
 		var todo = {
 			// id: new Date().toString('T'), //TODO: create with custom id not supported in waterline? 

@@ -40,8 +40,8 @@ var AbstractRepo = function(config) {
 	 * Create a doc.
 	 * @param  {string} text The content of the doc
 	 */
-	this.create = function(obj) {
-		return this.db.create(obj);
+	this.create = function(obj, isServerCall) {
+		return this.db.create(obj, isServerCall);
 	};
 
 	/**
@@ -50,8 +50,15 @@ var AbstractRepo = function(config) {
 	 * @param {object} updates An object literal containing only the data to be
 	 *     updated.
 	 */
-	this.update = function(id, partial) {
-		return this.db.update(id, partial);
+	this.update = function(id, partial, isServerCall) {
+		return this.db.update(id, partial, isServerCall);
+	};
+
+	//Get the doc given id. This is needed because we need to specify a _rev of optimistic versioning.
+	//Use the _rev and id to remove the document.
+	//If doc not found OR anything goes wrong -> handled upstream by promise catch
+	this.destroy = function(id, isServerCall) {
+		return this.db.remove(id, isServerCall);
 	};
 
 	/**
@@ -68,13 +75,6 @@ var AbstractRepo = function(config) {
 		return that.getDocs().then(function(docs) {
 			return that.db.updateMulti(docs, updates);
 		});
-	};
-
-	//Get the doc given id. This is needed because we need to specify a _rev of optimistic versioning.
-	//Use the _rev and id to remove the document.
-	//If doc not found OR anything goes wrong -> handled upstream by promise catch
-	this.destroy = function(id) {
-		return this.db.remove(id);
 	};
 
 	/**

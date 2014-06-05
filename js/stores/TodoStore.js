@@ -76,37 +76,52 @@ var TodoStore = merge(AbstractStore, {
   //The object notation allows for more elaborate things to be declared
   //such as async and optimistic operation.
   actions: {
-    "TODO_CREATE": {
+    "CREATESERVER": {
+      fn: "onServerUpdate",
+      async: true,
+      optimistic: true
+    },
+    "UPDATESERVER": {
+      fn: "onServerUpdate",
+      async: true,
+      optimistic: true
+    },
+    "DESTROYSERVER": {
+      fn: "onServerUpdate",
+      async: true,
+      optimistic: true
+    },
+    "CREATE": {
       fn: "onTodoCreate",
       async: true,
       optimistic: true
     },
-    "TODO_TOGGLE_COMPLETE_ALL":{
+    "TOGGLE_COMPLETE_ALL":{
       fn:  "onTodoToggleCompleteAll",
       async: true,
       optimistic: true
     },
-    "TODO_UNDO_COMPLETE": {
+    "UNDO_COMPLETE": {
       fn: "onTodoUndoComplete",
       async: true,
       optimistic: true
     },
-    "TODO_COMPLETE": {
+    "COMPLETE": {
       fn: "onTodoComplete",
       async: true,
       optimistic: true
     },
-    "TODO_UPDATE_TEXT": {
+    "UPDATE_TEXT": {
       fn: "onTodoUpdateText",
       async: true,
       optimistic: true
     },
-    "TODO_DESTROY": {
+    "DESTROY": {
       fn: "onTodoDestroy",
       async: true,
       optimistic: true
     },
-    "TODO_DESTROY_COMPLETED": {
+    "DESTROY_COMPLETED": {
       fn: "onTodoDestroyCompleted",
       async: true,
       optimistic: true
@@ -121,12 +136,36 @@ var TodoStore = merge(AbstractStore, {
   // This is checked on init (as part of AbstractStore)
   ////////////////////
   
+  /**
+   * Handle: CREATESERVER, UPDATESERVER, DESTROYSERVER
+   */
+  onServerUpdate: function(action){
+
+    if(action.actionType === TodoConstants.CREATESERVER){
+
+      //create object and denote it's already created on the server
+      return this.todoRepo.create(action.obj, true);
+
+    }else if(action.actionType === TodoConstants.UPDATESERVER){
+
+      //update object and denote it's already updated on the server
+      return this.todoRepo.update(action.obj.id, action.obj, true);
+
+    }else if(action.actionType === TodoConstants.DESTROYSERVER){
+
+      //destroy object and denote it's already destroyed on the server
+      return this.todoRepo.destroy(action.obj.id, true);
+
+    }
+    throw new Error("onServerUpdate called with unrecognized actionType: " + action.actionType);
+  },
+
   onTodoCreate: function(action){
     var text = action.text.trim();
     if (text === '') {
       throw new Error("onTodoCreate shouldn't be called with empty text!");
     }
-    return this.todoRepo.create(text);
+    return this.todoRepo.createWithText(text);
   },
 
   onTodoToggleCompleteAll: function(action){

@@ -90,18 +90,19 @@ var cacheProxyFN = function(adapterToWrap){
 		 * @param  {[type]} doc [description]
 		 * @return {[type]}     [description]
 		 */
-		create: function(doc){
+		create: function(doc, isServerCall){
 			if(!_.isObject(doc)){
 				return Promise.reject(new Error("'doc' is not an object"));
 			}
 			var that = this;
 
 			return this._wrapWithPromise(function(){
-				return that.adapter.create(doc);
+				return that.adapter.create(doc, isServerCall);
 			}).then(function(result) {
 				that.docs[result.id] = result;
 			});
 		},
+		
 
 		/**
 		 * update existing doc (id should be passed)
@@ -110,7 +111,7 @@ var cacheProxyFN = function(adapterToWrap){
 		 * @param  {[type]} rev     [description]
 		 * @return {[type]}         [description]
 		 */
-		update: function(id, partial) {
+		update: function(id, partial, isServerCall) {
 			
 			if (id === undefined) {
 				return Promise.reject(new Error("'id' not specified"));
@@ -129,7 +130,7 @@ var cacheProxyFN = function(adapterToWrap){
 
 			var that = this;
 			return this._wrapWithPromise(function(){
-				return that.adapter.update(id, partial);
+				return that.adapter.update(id, partial, isServerCall);
 			}).then(function(createdDoc) {
 				
 				//mixin some server generated props such as 'createdAt', etc.
@@ -137,6 +138,21 @@ var cacheProxyFN = function(adapterToWrap){
 
 			});
 		},
+
+		remove: function(id, isServerCall) {
+
+			if (id === undefined) {
+				return Promise.reject(new Error("'id' not specified"));
+			} 
+
+			var that = this;
+			delete this.docs[id];
+
+			return this._wrapWithPromise(function(){
+				return that.adapter.remove(id, isServerCall);
+			});
+		},
+
 
 
 		updateMulti: function(docs, updates) {
@@ -169,19 +185,7 @@ var cacheProxyFN = function(adapterToWrap){
 			});
 		},
 
-		remove: function(id) {
-
-			if (id === undefined) {
-				return Promise.reject(new Error("'id' not specified"));
-			} 
-
-			var that = this;
-			delete this.docs[id];
-
-			return this._wrapWithPromise(function(){
-				return that.adapter.remove(id);
-			});
-		},
+		
 
 		/**
 		 * remove the documents passed by param 'docs'.

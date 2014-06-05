@@ -17,6 +17,7 @@
  */
 
 var TodoRepoFN = require("./repositories/TodoRepository");
+var todoActions = require("./actions/TodoActions");
 
 var adapterSailsSocket = require("./repositories/adapters/sails-socket");
 
@@ -25,7 +26,9 @@ io.socket.on("connect", function(){
 	var repos = {
 		todo: new TodoRepoFN({
 	    	cache: true,
-	    	adapter: adapterSailsSocket
+	    	adapter: adapterSailsSocket,
+	    	live: true,
+	    	liveActions: todoActions
 	  	})
 	};
 	//NOTE: require them to be in lowercase
