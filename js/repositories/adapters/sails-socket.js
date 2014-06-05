@@ -47,6 +47,9 @@ var sailsSocketFN = function(config){
 			});
 		},
 		get: function(id){
+			if(id === undefined){
+				return Promise.reject(new Error("'id' not specified"));
+			}
 			return new Promise(function(resolve, reject) {
 				var url = endpoint + "/"+ id;
 				socket.get(url, function (response) {
@@ -58,6 +61,9 @@ var sailsSocketFN = function(config){
 			});
 		},
 		create: function(doc){
+			if(!_.isObject(doc)){
+				return Promise.reject(new Error("'doc' is not an object"));
+			}
 			return new Promise(function(resolve, reject) {
 				socket.post(endpoint, doc, function(response){
 					if(response.statusCode || response.status){ //error?
@@ -67,10 +73,18 @@ var sailsSocketFN = function(config){
 				});
 			});
 		},
-		update: function(id, doc, rev){
+		update: function(id, partial){
+
+			if (id === undefined) {
+				return Promise.reject(new Error("'id' not specified"));
+			} 
+			if (!_.isObject(partial)) {
+				return Promise.reject(new Error("'partial' is not an object"));
+			} 
+
 			return new Promise(function(resolve, reject) {
-				var url = endpoint + "/"+ doc.id;
-				socket.put(url, doc, function (response) {
+				var url = endpoint + "/"+ id;
+				socket.put(url, partial, function (response) {
 					if(response.statusCode || response.status){ //error?
 						return reject(response.statusCode || response.status);
 					}
@@ -86,6 +100,18 @@ var sailsSocketFN = function(config){
 		 */
 		updateMulti: function(docs, updates){
 			
+			if(!_.isArray(docs)){
+				return Promise.reject(new Error("'docs' is not an array"));
+			}
+
+			if(!_.isObject(updates)){
+				return Promise.reject(new Error("'updates' is not an object"));
+			}
+
+			if (!docs.length) {
+				return Promise.resolve();
+			}
+
 			var payload = {
 				ids: _.pluck(docs, "id"),
 				partial: updates
@@ -102,7 +128,12 @@ var sailsSocketFN = function(config){
 			});
 		},
 
-		remove: function(id, rev){
+		remove: function(id){
+
+			if (id === undefined) {
+				return Promise.reject(new Error("'id' not specified"));
+			} 
+
 			return new Promise(function(resolve, reject) {
 				var url = endpoint + "/"+ id;
 				socket.delete(url, function (response) {
@@ -122,12 +153,23 @@ var sailsSocketFN = function(config){
 		 */
 		removeMulti: function(docs){
 			
+
+			if(!_.isArray(docs)){
+				return Promise.reject(new Error("'docs' is not an array"));
+			}
+			
+			if (!docs.length) {
+				return Promise.resolve();
+			}
+
 			var payload = {
 				ids:  _.pluck(docs, "id")
 			};
 
 			return new Promise(function(resolve, reject) {
+
 				socket.delete(endpoint, payload, function (response) {
+
 					//https://github.com/gebrits/flux-test/issues/24
 					//TODO: are all errors guarenteed to pass 'statusCode'? 
 					//http://stackoverflow.com/questions/24056059/whats-the-error-signature-from-a-socket-io-response-in-sailsjs

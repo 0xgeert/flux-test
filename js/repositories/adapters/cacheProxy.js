@@ -39,13 +39,31 @@ var cacheProxyFN = function(config){
 
 		// when adapter signals error -> repopulate in-mem todos
 		// this effectively functions as a rollback 
-		rollbackAfterConflict: function(err) {
+		_rollbackAfterConflict: function(err) {
 			console.log(this);
 			console.log(err);
 			console.log("rolling back...");
 			this.docs = undefined; //clear cache so fetchall is performed from remote
-			return this.fetchAll();
+			return this.find();
 		},
+
+		/**
+		 * This wraps a call to the proxied adapter into the body of a promise. 
+		 * This ensures rejects (as well as throws on the current tick) are correctly 
+		 * caught so a rollback can be performed
+		 * @param  {[type]} thenFN [description]
+		 * @return {[type]}        [description]
+		 */
+		_wrapWithPromise: function(thenFN){
+			return new Promise(function(resolve, reject){
+				thenFN().then(function(result){
+					resolve(result);
+				})["catch"](function(err){
+					reject(err);
+				});
+			})["catch"](this._rollbackAfterConflict);
+		},
+
 
 		find: function() {
 			var that = this;
@@ -75,7 +93,9 @@ var cacheProxyFN = function(config){
 
 		//requires in-mem store to be populated!
 		get: function(id) {
-			//always fetch on in-mem store
+			if(id === undefined){
+				return Promise.reject(new Error("'id' not specified"));
+			}
 			return Promise.resolve(this.docs[id]);
 		},
 
@@ -85,10 +105,16 @@ var cacheProxyFN = function(config){
 		 * @return {[type]}     [description]
 		 */
 		create: function(doc){
+			if(!_.isObject(doc)){
+				return Promise.reject(new Error("'doc' is not an object"));
+			}
 			var that = this;
-			return that.adapter.create(doc).then(function(result) {
+
+			return this._wrapWithPromise(function(){
+				return that.adapter.create(doc);
+			}).then(function(result) {
 				that.docs[result.id] = result;
-			})["catch"](this.rollbackAfterConflict);
+			});
 		},
 
 		/**
@@ -100,82 +126,78 @@ var cacheProxyFN = function(config){
 		 */
 		update: function(id, partial) {
 			
-			if (!id) {
-				throw new Error("update should define 'id'");
+			if (id === undefined) {
+				return Promise.reject(new Error("'id' not specified"));
+			} 
+			if (!_.isObject(partial)) {
+				return Promise.reject(new Error("'partial' is not an object"));
 			} 
 
-			var that = this,
-				doc = that.docs[id];
+			var doc = this.docs[id];
 
-			if (!doc) {
-				return Promise.reject("doc not found");
+			if (doc === undefined) {
+				return Promise.reject(new Error("doc not found"));
 			}
 			
-			doc = that.docs[id] = _.extend(doc, partial);
+			doc = this.docs[id] = _.extend(doc, partial);
 
 			if(revNeeded && doc._rev === undefined){
 				return Promise.reject("'rev' should exist on doc when calling repo.update");
 			}
-
-			return that.adapter.update(id, doc, doc._rev).then(function(createdDoc) {
+			var that = this;
+			return this._wrapWithPromise(function(){
+				return that.adapter.update(id, partial);
+			}).then(function(createdDoc) {
 				
 				//mixin some server generated props such as 'createdAt', etc.
 				_.extend(doc, createdDoc);
 
-				//NOTE: relic but may be useful again
-				//update cache with changed/created rev
-				//doc._rev = result.rev;
-				
-			})["catch"](this.rollbackAfterConflict);
+			});
 		},
 
 
 		updateMulti: function(docs, updates) {
 			var that = this;
 
+			if(!_.isArray(docs)){
+				return Promise.reject(new Error("'docs' is not an array"));
+			}
+
+			if(!_.isObject(updates)){
+				return Promise.reject(new Error("'updates' is not an object"));
+			}
+
 			if (!docs.length) {
 				return Promise.resolve();
 			}
 
-			try{
-				_.each(docs, function(doc) {
-					if(revNeeded && doc._rev === undefined){
-						throw new Error("'_rev' should exist on doc when passed to updateMulti");
-					}
-					_.extend(doc, updates);
-				});
-			}catch(err){
-				return Promise.reject(err);
-			}
+			_.each(docs, function(doc) {
+				_.extend(doc, updates);
+			});
 
-			return that.adapter.updateMulti(docs, updates).then(function(result) {
+			return this._wrapWithPromise(function(){
+				return that.adapter.updateMulti(docs, updates);
+			}).then(function(result) {
 				
 				_.each(result, function(changedDoc) {
-					var doc = that.docs[changedDoc.id];
-					if (doc) {
-						_.extend(doc, changedDoc);
-
-						//update cache with changed rev
-						//NOTE: relic, but may be useful in future
-						//doc._rev = changedDoc.rev;
-					}
+					_.extend(docs[changedDoc.id], changedDoc);
 				});
-			})["catch"](this.rollbackAfterConflict);
+
+			});
 		},
 
-		remove: function(id, rev) {
+		remove: function(id) {
 
-			var doc =  this.docs[id];
+			if (id === undefined) {
+				return Promise.reject(new Error("'id' not specified"));
+			} 
+
+			var that = this;
 			delete this.docs[id];
 
-			if (!doc) {
-				throw new Error("doc not found: " + id);
-			}
-			if (revNeeded &&  doc._rev === undefined) {
-				throw new Error("'rev' should exist on doc when calling repo.remove");
-			}
-			return this.adapter.remove(id, doc._rev)["catch"](this.rollbackAfterConflict);
-
+			return this._wrapWithPromise(function(){
+				return that.adapter.remove(id);
+			});
 		},
 
 		/**
@@ -185,22 +207,24 @@ var cacheProxyFN = function(config){
 		 * @return {[type]}      [description]
 		 */
 		removeMulti: function(docs) {
-			var that = this;
+
+			
+			if(!_.isArray(docs)){
+				return Promise.reject(new Error("'docs' is not an array"));
+			}
+
 			if (!docs.length) {
 				return Promise.resolve();
 			}
-			try{
-				_.each(docs, function(doc) {
-					if(revNeeded && doc._rev === undefined){
-						throw new Error("'_rev' should exist on doc when passed to removeMulti");
-					}
-					delete that.docs[doc.id];
-				});
-			}catch(err){
-				return Promise.reject(err);
-			}
+
+			var that = this;
+			_.each(docs, function(doc) {
+				delete that.docs[doc.id];
+			});
 			
-			return that.adapter.removeMulti(docs)["catch"](this.rollbackAfterConflict);
+			return this._wrapWithPromise(function(){
+				return that.adapter.removeMulti(docs);
+			});
 		}
 	};
 	_.bindAll(adapter);
