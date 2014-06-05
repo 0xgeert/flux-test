@@ -25,7 +25,7 @@ io.socket.on("connect", function(){
 	var repos = {
 		todo: new TodoRepoFN({
 	    	cache: true,
-	    	//adapter: adapterSailsSocket
+	    	adapter: adapterSailsSocket
 	  	})
 	};
 	//NOTE: require them to be in lowercase

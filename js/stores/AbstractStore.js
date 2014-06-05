@@ -46,6 +46,11 @@ var AbstractStore = merge(EventEmitter.prototype, {
 
   init: function() {
 
+    if(this.initted){
+      throw new Error("Store already initialized. This really shouldn't be happening");
+    }
+    this.initted = true;
+    
     if (this.name === undefined) {
       throw new Error("Store should have 'name'  defined");
     }

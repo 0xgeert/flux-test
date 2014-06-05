@@ -16,6 +16,20 @@
 var _ = require("lodash");
 module.exports = {
 
+	testSocket: function(req,res){
+
+        if(req.isSocket){
+
+          Todo.watch(req.socket);
+          console.log('Todo with socket id '+req.socket.id+' is now subscribed to the model class \'todo\'.');
+
+        } else {
+
+          res.view();
+
+        }
+    },
+
 	/**
 	 * payload: {
 	 * 	where: {}, 
@@ -48,6 +62,13 @@ module.exports = {
 		}
 		Todo.destroy(where).exec(function(err, todos) {
 		   if (err) {return res.serverError();}
+
+		   console.log("testing");
+		   //let clients know what happened so they can sync up
+		   Todo.message(todos,{
+		   	moeha: "jaja"
+		   });
+
 		   return res.json(todos);
 		});
 	},

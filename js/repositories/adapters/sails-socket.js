@@ -6,6 +6,74 @@ var Promise = require('es6-promise').Promise;
 
 var cacheProxy = require("./cacheProxy");
 
+var initSocketLiveFeedHandler = function(col, endpoint){
+	
+    var socket = io.socket;
+
+    // send a request to todo.testSocket
+    // Custom controller code will subscribe the current socket to the model 'todo' by calling `watch` on said model
+    // https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#watchrequest
+    // 
+    // This will automatically subscribe to all future create/update/delete/add/remove messages by ANY instances of said model. 
+    // The default CRUD blueprint messages send these messages.
+    // 
+    // An alternative (when going the filtered / authorized route) would be to use model.subscribe
+    // to selective subscribe to certain instances. 
+    // see: https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#subscriberequestrecordscontexts
+    // 
+    // questions: 
+    // - does a socket get automatically subscribed to a model instance it creates? (or is there a way to config that?)
+    // - what what be a good way to subscribe to events of all model instance a user is authorized to seeing?
+    // 
+    socket.get(endpoint + '/testSocket/');
+
+	socket.on(col, function(obj) {
+
+		console.log("## SERVER EVENT RECEIVED ##############################");
+		console.log("object: " + obj.verb);
+		
+
+		if(obj.verb === "created"){
+			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishcreate-datarequest-
+			//
+			//The default implementation of publishCreate only publishes messages to the firehose, 
+			//and to sockets subscribed to the model class using the **watch** method. 
+			//It also subscribes all sockets "watching" the model class to the new instance. 
+		}else if(obj.verb === "updated"){
+			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishupdate-idchangesrequestoptions-
+			//
+			// emits a socket message using the model identity as the event name. 
+			// The message is broadcast to all sockets subscribed to the model instance via the .subscribe model method.
+		}else if(obj.verb === "destroyed"){
+			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishdestroy-id-request-options-
+			//
+			//emits a socket message using the model identity as the event name. 
+			//The message is broadcast to all sockets subscribed to the model instance via the .subscribe model method.
+		}else if(obj.verb === "messaged"){
+			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#message-modelsdata-request-
+			//
+			//emits a socket message using the model identity as the event name. 
+			//The message is broadcast to all sockets subscribed to the model instance via the .subscribe model method.
+			//NOTE: this can be used to broadcast a custom message
+		}else if(obj.verb === "addedTo"){
+			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishadd-idattribute-idadded-request-options-
+			//
+			//Publishes a notification when an associated record is added to a model's collection.
+			//
+			//emits a socket message using the model identity as the event name. 
+			//The message is broadcast to all sockets subscribed to the model instance via the .subscribe model method.
+		}else if(obj.verb === "removedFrom"){
+			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishremove-idattribute-idremoved-request-options-
+			//
+			//Publishes a notification when an associated record is removed to a model's collection. 
+			//
+			// emits a socket message using the model identity as the event name. 
+			// The message is broadcast to all sockets subscribed to the model instance via the .subscribe model method.
+		}
+		console.log(obj);
+	});
+};
+
 /**
  * A adapter to plug into a repository. 
  * This adapter is a facade around sails.socket.io
@@ -32,11 +100,7 @@ var sailsSocketFN = function(config){
 	//endpoint, e.g.: /user
 	var endpoint = "/"+col;
 
-	socket.on(col, function(cometEvent) {
-		console.log("################################");
-		console.log("event received");
-		console.log(cometEvent);
-	});
+	initSocketLiveFeedHandler(col, endpoint);
 
 	var adapter = {
 		find: function(){
