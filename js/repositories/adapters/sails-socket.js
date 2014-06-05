@@ -189,7 +189,7 @@ var sailsSocketFN = function(config){
 
 	//////////////////////
 	console.log("** Registered Repository: " + config.name + " *************");
-	console.log("**** adapter: " + this.adapterName);
+	console.log("**** adapter: " + this.adapterName + ((config.adapterIsDefault) ? " (default)": ""));
 	if(config.cache){
 		console.log("**** cached: yes");
 		return cacheProxy(adapter);

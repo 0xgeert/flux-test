@@ -2,7 +2,7 @@
 
 var _ = require("lodash");
 
-var adapter = require("./adapters/sails-socket");
+var adapterSailsSocket = require("./adapters/sails-socket");
 
 /**
  * AbstractRepo that could be used to model different Repositories.
@@ -21,9 +21,20 @@ var AbstractRepo = function(config) {
 	if(config.collection === undefined){
 		throw new Error("Reopsitory cannot be init without config.collection");
 	}
-	this.db = new adapter(_.extend(config, {
+
+	config.adapterIsDefault = false;
+
+	if(config.adapter === undefined){
+		config.adapter = adapterSailsSocket;
+		config.adapterIsDefault = true;
+	}
+
+	var conf = _.extend({}, config, {
 		name: this.name
-	}));
+	});
+	delete conf.adapter;
+
+	this.db = new config.adapter(conf);
 
 	/**
 	 * Create a doc.

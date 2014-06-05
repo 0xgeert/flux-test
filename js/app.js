@@ -18,11 +18,14 @@
 
 var TodoRepoFN = require("./repositories/TodoRepository");
 
+var adapterSailsSocket = require("./repositories/adapters/sails-socket");
+
 io.socket.on("connect", function(){
 
 	var repos = {
 		todo: new TodoRepoFN({
-	    	cache: true
+	    	cache: true,
+	    	//adapter: adapterSailsSocket
 	  	})
 	};
 	//NOTE: require them to be in lowercase
