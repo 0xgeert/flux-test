@@ -1,5 +1,7 @@
+"use strict";
+
 /**
- * Default 200 (OK) Handler
+ * Custom 200 (OK) Handler which filters json output bsaed on authorization
  * 
  * @param  {Object} data
  * @param  {Boolean|String} viewOrRedirect
@@ -9,17 +11,29 @@
  *          - pass string with leading slash or http:// or https:// to do redirect
  */
 
+var _ = require("lodash");
+
 module.exports = function sendOK (data, viewOrRedirect) {
 	
 	var req = this.req;
 	var res = this.res;
 
-	// Serve JSON (with optional JSONP support)
-	if (req.wantsJSON || !viewOrRedirect) {
+	var callbackFN = function(){
 		if ( req.options.jsonp && !req.isSocket ) {
 			return res.jsonp(data);
 		}
-		else return res.json(data);
+		else {
+			return res.json(data);
+		}
+	};
+
+	// Serve JSON (with optional JSONP support)
+	if (req.wantsJSON || !viewOrRedirect) {
+		if(req.authz){
+			console.log("auth z touched");
+			setTimeout(callbackFN, 100);
+		}
+		return callbackFN();
 	}
 
 	// Serve HTML view or redirect to specified URL
@@ -27,7 +41,11 @@ module.exports = function sendOK (data, viewOrRedirect) {
 		if (viewOrRedirect.match(/^(\/|http:\/\/|https:\/\/)/)) {
 			return res.redirect(viewOrRedirect);
 		}
-		else return res.view(viewOrRedirect, data);
+		else {
+			return res.view(viewOrRedirect, data);
+		}
 	}
-	else return res.view(data);
+	else {
+		return res.view(data);
+	}
 };
