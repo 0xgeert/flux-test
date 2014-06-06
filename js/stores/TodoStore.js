@@ -148,13 +148,14 @@ var TodoStore = merge(AbstractStore, {
 
     var promises = [];
 
+
     if (action.actionType === TodoConstants.CREATESERVER) {
 
       //create object and denote it's already created on the server
       return this.todoRepo.create(action.obj, true);
 
     } else if (action.actionType === TodoConstants.UPDATESERVER) {
-      
+
       //used for single update or multiple update (in which case action.obj is an array)
       //NOTE: No multi-actions are currently passed. This may be done in the future by batching actions: 
       //see https://github.com/gebrits/flux-test/issues/37

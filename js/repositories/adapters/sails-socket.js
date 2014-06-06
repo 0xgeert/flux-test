@@ -53,6 +53,27 @@ var initSocketLiveFeedHandler = function(col, endpoint, liveActions){
 		var batch,
 			batchStore;
 
+		//helper to execute or batch server received message
+		var executeOrBatch = function(obj, dataTransformFN, execFN){
+			if(obj.previous.__batch){
+				batch = obj.previous.__batch;
+				delete obj.previous.__batch;
+
+				batchStore = serverSideBatches[batch.batchid] = serverSideBatches[batch.batchid] || {
+					size: batch.size, 
+					data: []
+				};
+
+				batchStore.data.push(dataTransformFN(obj));
+				if(batchStore.size === batchStore.data.length){
+					execFN(batchStore.data);
+					delete serverSideBatches[batch.batchid];
+				}
+			}else{
+				execFN(dataTransformFN(obj));
+			}
+    	};
+
 		if(obj.verb === "created"){
 
 			//pass the newly created object
@@ -62,58 +83,30 @@ var initSocketLiveFeedHandler = function(col, endpoint, liveActions){
 			if(obj.previous === undefined){
 				throw new Error("server updated event needs to defined obj.previous");
 			}
-			if(obj.previous.__batch){
-				// a single update that is part of a batch
-				// wait until batch complete and process the batch as a whole
-				batch = obj.previous.__batch;
-				delete obj.previous.__batch;
-
-				batchStore = serverSideBatches[batch.batchid] = serverSideBatches[batch.batchid] || {
-					size: batch.size, 
-					data: []
-				};
-
-				batchStore.data.push(_.extend(obj.previous||{}, obj.data));
-				if(batchStore.size === batchStore.data.length){
-					liveActions.updateFromServer(batchStore.data);
-					delete serverSideBatches[batch.batchid];
+			executeOrBatch(obj, 
+				function dataTransformFN(obj){
+					//obj.data are the chnages ( may be a partial) -> 
+					//lets extend the previous object with the changes
+					return _.extend(obj.previous||{}, obj.data);
+				},
+				function execFN(data){
+					liveActions.updateFromServer(data);
 				}
-			}else{
-				//a single (non batched) update. 
-				//This contains updated data in obj.data (which may be a partial)
-				//This is mixed in with obj.previous (i.e.: the data before the update)
-				//to arrive at the new object. 
-				//This object is passed to the dispatcher
-				liveActions.updateFromServer(_.extend(obj.previous||{}, obj.data));
-			}
+			);
 		}else if(obj.verb === "destroyed"){
 
 			if(obj.previous === undefined){
 				throw new Error("server updated event needs to defined obj.previous");
 			}
-
-			//pass the destroyed object
-			if(obj.previous.__batch){
-				// a single destroy that is part of a batch
-				// wait until batch complete and process the batch as a whole
-				batch = obj.previous.__batch;
-				delete obj.previous.__batch;
-
-				batchStore = serverSideBatches[batch.batchid] = serverSideBatches[batch.batchid] || {
-					size: batch.size, 
-					data: []
-				};
-
-				batchStore.data.push(obj.previous);
-				if(batchStore.size === batchStore.data.length){
-					liveActions.destroyFromServer(batchStore.data);
-					delete serverSideBatches[batch.batchid];
+			executeOrBatch(obj, 
+				function dataTransformFN(obj){
+					//the server message passes the deleted object in 'obj.previous'
+					return obj.previous;
+				},
+				function execFN(data){
+					liveActions.destroyFromServer(data);
 				}
-			}else{
-				//a single (non batched) destroy. 
-				//This object (the deleted object, i.e.: obj.previous) is passed to the dispatcher
-				liveActions.destroyFromServer(obj.previous);	
-			}
+			);
 		}
 		else{
 			console.log("TBD: UNHANDLED STUFF FROM HERE");
