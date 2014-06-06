@@ -52,7 +52,6 @@ var initSocketLiveFeedHandler = function(col, endpoint, liveActions){
 			liveActions.createFromServer(obj.data);
 
 		}else if(obj.verb === "updated"){
-			console.log("jajaja");
 			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishupdate-idchangesrequestoptions-
 			//
 			// emits a socket message using the model identity as the event name. 
