@@ -96,6 +96,8 @@ var cacheProxyFN = function(adapterToWrap){
 			}
 			var that = this;
 
+			//NOTE: since we let the server create ids, it's not possible to optimistically create a doc
+			//iow: the user will see a lag on create if server is slow
 			return this._wrapWithPromise(function(){
 				return that.adapter.create(doc, isServerCall);
 			}).then(function(result) {
