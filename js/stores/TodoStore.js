@@ -26,12 +26,14 @@ var AbstractStore = require('./AbstractStore');
 
 var TodoConstants = require('../constants/TodoConstants');
 
+var Promise = require('es6-promise').Promise;
+
 var TodoStore = merge(AbstractStore, {
 
-  CHANGE_EVENT:'change',
+  CHANGE_EVENT: 'change',
 
   name: "todo",
-  
+
   constants: TodoConstants,
 
   //repositories to use. 
@@ -46,10 +48,12 @@ var TodoStore = merge(AbstractStore, {
    * @return {booleam}
    */
   areAllComplete: function(cb) {
-    return this.todoRepo.getDocs().then(function(docs){
-      var allComplete = docs.length === _.where(docs, {complete: true}).length;
+    return this.todoRepo.getDocs().then(function(docs) {
+      var allComplete = docs.length === _.where(docs, {
+        complete: true
+      }).length;
       return cb(undefined, allComplete);
-    })["catch"](function(err){
+    })["catch"](function(err) {
       cb(err);
     });
   },
@@ -59,10 +63,10 @@ var TodoStore = merge(AbstractStore, {
    * @return {object}
    */
   getAll: function(cb) {
-    this.todoRepo.getDocs().then(function(docs){
-      var docsMap =  _.zipObject(_.pluck(docs, 'id'), docs);
-      cb(undefined,docsMap);
-    }).catch(function(err){
+    this.todoRepo.getDocs().then(function(docs) {
+      var docsMap = _.zipObject(_.pluck(docs, 'id'), docs);
+      cb(undefined, docsMap);
+    }).catch(function(err) {
       cb(err);
     });
   },
@@ -96,8 +100,8 @@ var TodoStore = merge(AbstractStore, {
       async: true,
       optimistic: true
     },
-    "TOGGLE_COMPLETE_ALL":{
-      fn:  "onTodoToggleCompleteAll",
+    "TOGGLE_COMPLETE_ALL": {
+      fn: "onTodoToggleCompleteAll",
       async: true,
       optimistic: true
     },
@@ -135,32 +139,55 @@ var TodoStore = merge(AbstractStore, {
   // If async, they need to return a promise
   // This is checked on init (as part of AbstractStore)
   ////////////////////
-  
+
   /**
    * Handle: CREATESERVER, UPDATESERVER, DESTROYSERVER
    */
-  onServerUpdate: function(action){
+  onServerUpdate: function(action) {
+    var that = this;
 
-    if(action.actionType === TodoConstants.CREATESERVER){
+    var promises = [];
+
+    if (action.actionType === TodoConstants.CREATESERVER) {
 
       //create object and denote it's already created on the server
       return this.todoRepo.create(action.obj, true);
 
-    }else if(action.actionType === TodoConstants.UPDATESERVER){
+    } else if (action.actionType === TodoConstants.UPDATESERVER) {
+      
+      //used for single update or multiple update (in which case action.obj is an array)
+      //NOTE: No multi-actions are currently passed. This may be done in the future by batching actions: 
+      //see https://github.com/gebrits/flux-test/issues/37
+      if (!_.isArray(action.obj)) {
+        action.obj = [action.obj];
+      }
 
-      //update object and denote it's already updated on the server
-      return this.todoRepo.update(action.obj.id, action.obj, true);
+      _.each(action.obj, function(obj) {
+        promises.push(that.todoRepo.update(obj.id, obj, true));
+      });
 
-    }else if(action.actionType === TodoConstants.DESTROYSERVER){
+      return Promise.all(promises);
 
-      //destroy object and denote it's already destroyed on the server
-      return this.todoRepo.destroy(action.obj.id, true);
+    } else if (action.actionType === TodoConstants.DESTROYSERVER) {
+
+      //used for single destory or multiple destroys (in which case action.obj is an array)
+      //NOTE: No multi-actions are currently passed. This may be done in the future by batching actions: 
+      //see https://github.com/gebrits/flux-test/issues/37
+      if (!_.isArray(action.obj)) {
+        action.obj = [action.obj];
+      }
+
+      _.each(action.obj, function(obj) {
+        promises.push(that.todoRepo.destroy(obj.id, true));
+      });
+
+      return Promise.all(promises);
 
     }
     throw new Error("onServerUpdate called with unrecognized actionType: " + action.actionType);
   },
 
-  onTodoCreate: function(action){
+  onTodoCreate: function(action) {
     var text = action.text.trim();
     if (text === '') {
       throw new Error("onTodoCreate shouldn't be called with empty text!");
@@ -168,41 +195,53 @@ var TodoStore = merge(AbstractStore, {
     return this.todoRepo.createWithText(text);
   },
 
-  onTodoToggleCompleteAll: function(action){
+  onTodoToggleCompleteAll: function(action) {
     var that = this;
-    return TodoStore.areAllComplete(function(err, allComplete){
-      if(err){
-         throw err;
+    return TodoStore.areAllComplete(function(err, allComplete) {
+      if (err) {
+        throw err;
       }
       if (allComplete) {
-        return that.todoRepo.updateAll({complete: false});
+        return that.todoRepo.updateAll({
+          complete: false
+        });
       } else {
-        return that.todoRepo.updateAll({complete: true});
+        return that.todoRepo.updateAll({
+          complete: true
+        });
       }
     });
   },
 
-  onTodoUndoComplete: function(action){
-    return this.todoRepo.update(action.id, {complete: false});
+  onTodoUndoComplete: function(action) {
+    return this.todoRepo.update(action.id, {
+      complete: false
+    });
   },
 
-  onTodoComplete: function(action){
-    return this.todoRepo.update(action.id, {complete: true});
+  onTodoComplete: function(action) {
+    return this.todoRepo.update(action.id, {
+      complete: true
+    });
   },
 
-  onTodoUpdateText: function(action){
+  onTodoUpdateText: function(action) {
     var text = action.text.trim();
     if (text !== '') {
-      return this.todoRepo.update(action.id, {text: text});
+      return this.todoRepo.update(action.id, {
+        text: text
+      });
     }
   },
 
-  onTodoDestroy: function(action){
+  onTodoDestroy: function(action) {
     return this.todoRepo.destroy(action.id);
   },
 
-  onTodoDestroyCompleted: function(action){
-    return this.todoRepo.destroyMulti({complete: true});
+  onTodoDestroyCompleted: function(action) {
+    return this.todoRepo.destroyMulti({
+      complete: true
+    });
   },
 });
 

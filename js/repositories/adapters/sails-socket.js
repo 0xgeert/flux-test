@@ -6,6 +6,17 @@ var Promise = require('es6-promise').Promise;
 
 var cacheProxy = require("./cacheProxy");
 
+/**
+ * Batch format: 
+ * id : {
+ *   timer,
+ *   size, 
+ *   data: 
+ * }
+ * @type {Object}
+ */
+var serverSideBatches = {};
+
 var initSocketLiveFeedHandler = function(col, endpoint, liveActions){
 	
     var socket = io.socket;
@@ -39,37 +50,70 @@ var initSocketLiveFeedHandler = function(col, endpoint, liveActions){
 
 	socket.on(col, function(obj) {
 
+		var batch,
+			batchStore;
+
 		if(obj.verb === "created"){
 
-
-			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishcreate-datarequest-
-			//
-			//The default implementation of publishCreate only publishes messages to the firehose, 
-			//and to sockets subscribed to the model class using the **watch** method. 
-			//It also subscribes all sockets "watching" the model class to the new instance. 
-			
 			//pass the newly created object
 			liveActions.createFromServer(obj.data);
 
 		}else if(obj.verb === "updated"){
-			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishupdate-idchangesrequestoptions-
-			//
-			// emits a socket message using the model identity as the event name. 
-			// The message is broadcast to all sockets subscribed to the model instance via the .subscribe model method.
-			
-			//pass the updated object
-			liveActions.updateFromServer(_.extend(obj.previous||{}, obj.data));
+			if(obj.previous === undefined){
+				throw new Error("server updated event needs to defined obj.previous");
+			}
+			if(obj.previous.__batch){
+				// a single update that is part of a batch
+				// wait until batch complete and process the batch as a whole
+				batch = obj.previous.__batch;
+				delete obj.previous.__batch;
 
+				batchStore = serverSideBatches[batch.batchid] = serverSideBatches[batch.batchid] || {
+					size: batch.size, 
+					data: []
+				};
+
+				batchStore.data.push(_.extend(obj.previous||{}, obj.data));
+				if(batchStore.size === batchStore.data.length){
+					liveActions.updateFromServer(batchStore.data);
+					delete serverSideBatches[batch.batchid];
+				}
+			}else{
+				//a single (non batched) update. 
+				//This contains updated data in obj.data (which may be a partial)
+				//This is mixed in with obj.previous (i.e.: the data before the update)
+				//to arrive at the new object. 
+				//This object is passed to the dispatcher
+				liveActions.updateFromServer(_.extend(obj.previous||{}, obj.data));
+			}
 		}else if(obj.verb === "destroyed"){
-			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishdestroy-id-request-options-
-			//
-			//emits a socket message using the model identity as the event name. 
-			//The message is broadcast to all sockets subscribed to the model instance via the .subscribe model method.
-			
+
+			if(obj.previous === undefined){
+				throw new Error("server updated event needs to defined obj.previous");
+			}
 
 			//pass the destroyed object
-			liveActions.destroyFromServer(obj.previous);
+			if(obj.previous.__batch){
+				// a single destroy that is part of a batch
+				// wait until batch complete and process the batch as a whole
+				batch = obj.previous.__batch;
+				delete obj.previous.__batch;
 
+				batchStore = serverSideBatches[batch.batchid] = serverSideBatches[batch.batchid] || {
+					size: batch.size, 
+					data: []
+				};
+
+				batchStore.data.push(obj.previous);
+				if(batchStore.size === batchStore.data.length){
+					liveActions.destroyFromServer(batchStore.data);
+					delete serverSideBatches[batch.batchid];
+				}
+			}else{
+				//a single (non batched) destroy. 
+				//This object (the deleted object, i.e.: obj.previous) is passed to the dispatcher
+				liveActions.destroyFromServer(obj.previous);	
+			}
 		}
 		else{
 			console.log("TBD: UNHANDLED STUFF FROM HERE");
