@@ -31,21 +31,24 @@ module.exports = function sendOK (data, viewOrRedirect) {
 	if (req.wantsJSON || !viewOrRedirect) {
 		if(req.authz){
 			console.log("auth z touched");
-			setTimeout(callbackFN, 100);
+			setTimeout(callbackFN, 300);
+		}else{
+			return callbackFN();
 		}
-		return callbackFN();
-	}
-
-	// Serve HTML view or redirect to specified URL
-	if (typeof viewOrRedirect === 'string') {
-		if (viewOrRedirect.match(/^(\/|http:\/\/|https:\/\/)/)) {
-			return res.redirect(viewOrRedirect);
+	}else{
+		// Serve HTML view or redirect to specified URL
+		if (typeof viewOrRedirect === 'string') {
+			if (viewOrRedirect.match(/^(\/|http:\/\/|https:\/\/)/)) {
+				return res.redirect(viewOrRedirect);
+			}
+			else {
+				return res.view(viewOrRedirect, data);
+			}
 		}
 		else {
-			return res.view(viewOrRedirect, data);
+			return res.view(data);
 		}
 	}
-	else {
-		return res.view(data);
-	}
+
+	
 };
