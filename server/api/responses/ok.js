@@ -30,8 +30,10 @@ module.exports = function sendOK (data, viewOrRedirect) {
 	// Serve JSON (with optional JSONP support)
 	if (req.wantsJSON || !viewOrRedirect) {
 		if(req.authz){
-			console.log("auth z touched");
-			setTimeout(callbackFN, 300);
+			// console.log("auth z touched");
+			// setTimeout(callbackFN, 300);
+			callbackFN();
+			
 		}else{
 			return callbackFN();
 		}
