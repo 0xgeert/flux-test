@@ -14,12 +14,14 @@
  */
 
 var _ = require("lodash");
+var sails = require("sails");
+
 module.exports = {
 
 	testSocket: function(req, res) {
 
 		if (req.isSocket) {
-
+			sails.sockets.subscribeToFirehose(req.socket);
 			Todo.watch(req.socket);
 			console.log('Todo with socket id ' + req.socket.id + ' is now subscribed to the model class \'todo\'.');
 
@@ -60,18 +62,20 @@ module.exports = {
 				id: ids
 			};
 		}
-		Todo.destroy(where).exec(function(err, todos) {
+		Todo.destroy(where).exec(function(err, todosDeleted) {
 			if (err) {
 				return res.serverError();
 			}
 
-			//let clients know what happened so they can sync up
-			//NOT WORKING ATM
-			// Todo.message(todos,{
-			// 	moeha: "jaja"
-			// });
+			_.defer(function(){
+				_.each(todosDeleted, function(todo){
+					Todo.publishDestroy(todo.id, req, {
+						previous: todo
+					});
+				});
+			});
 
-			return res.json(todos);
+			return res.json(todosDeleted);
 		});
 	},
 
@@ -92,6 +96,7 @@ module.exports = {
 	 * @return {[type]}     [description]
 	 */
 	updateMulti: function(req, res) {
+
 		var where = req.param('where'),
 			partial = req.param('partial'),
 			ids = req.param('ids');
@@ -114,6 +119,12 @@ module.exports = {
 			if (err) {
 				return res.serverError();
 			}
+			_.defer(function(){
+				_.each(todosUpdated, function(todo){
+					Todo.publishUpdate(todo.id, todo, req);
+				});
+			});
+			
 			return res.json(todosUpdated);
 		});
 	}

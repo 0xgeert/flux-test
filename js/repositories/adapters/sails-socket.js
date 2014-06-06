@@ -27,11 +27,17 @@ var initSocketLiveFeedHandler = function(col, endpoint, liveActions){
     // 
     socket.get(endpoint + '/testSocket/');
 
-	socket.on(col, function(obj) {
+    // socket.get('/firehose', function nowListeningToFirehose() {
 
-		console.log("## SERVER EVENT RECEIVED ##############################");
-		console.log("object: " + obj.verb);
-		
+    //     // Attach a listener which fires every time the server publishes
+    //     // a message to the firehose:
+    //     socket.on('firehose', function newMessageFromSails(message) {
+    //         console.log('New message from firehose:\n', message);
+    //     });
+    // });
+
+
+	socket.on(col, function(obj) {
 
 		if(obj.verb === "created"){
 
@@ -46,13 +52,14 @@ var initSocketLiveFeedHandler = function(col, endpoint, liveActions){
 			liveActions.createFromServer(obj.data);
 
 		}else if(obj.verb === "updated"){
+			console.log("jajaja");
 			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishupdate-idchangesrequestoptions-
 			//
 			// emits a socket message using the model identity as the event name. 
 			// The message is broadcast to all sockets subscribed to the model instance via the .subscribe model method.
 			
 			//pass the updated object
-			liveActions.updateFromServer(_.extend(obj.previous, obj.data));
+			liveActions.updateFromServer(_.extend(obj.previous||{}, obj.data));
 
 		}else if(obj.verb === "destroyed"){
 			//https://github.com/balderdashy/sails-docs/blob/0.10/reference/ModelMethods.md#publishdestroy-id-request-options-
